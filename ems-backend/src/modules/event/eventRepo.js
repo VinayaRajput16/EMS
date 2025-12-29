@@ -6,22 +6,27 @@ export const eventRepo = {
   },
 
   findById(id) {
-    return prisma.event.findUnique({
-      where: { id },
-    });
+    return prisma.event.findUnique({ where: { id } });
   },
 
   findByOrganizer(organizerId) {
     return prisma.event.findMany({
       where: { organizerId },
-      orderBy: { createdAt: "desc" },
+      orderBy: { createdAt: "desc" }
     });
   },
 
   updateById(id, data) {
     return prisma.event.update({
       where: { id },
-      data,
+      data
     });
   },
+
+  deleteById(id) {
+    return prisma.event.delete({
+      where: { id }
+    });
+  }
 };
+

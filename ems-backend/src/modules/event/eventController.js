@@ -1,77 +1,58 @@
 import { eventService } from "./eventService.js";
 
 export const eventController = {
-  async createEvent(req, res, next) {
+  async create(req, res, next) {
     try {
-      const organizerId = req.user.id;
-
-      const event = await eventService.createEvent(
+      const event = await eventService.create(
         req.body,
-        organizerId
+        req.user.id
       );
-
-      res.status(201).json({
-        success: true,
-        data: event,
-      });
-    } catch (error) {
-      next(error);
+      res.status(201).json({ success: true, data: event });
+    } catch (e) {
+      next(e);
     }
   },
 
-  async updateEvent(req, res, next) {
+  async myEvents(req, res, next) {
     try {
-      const organizerId = req.user.id;
-      const { id } = req.params;
+      const events = await eventService.getMyEvents(req.user.id);
+      res.json({ success: true, data: events });
+    } catch (e) {
+      next(e);
+    }
+  },
 
-      const event = await eventService.updateEvent(
-        id,
+  async update(req, res, next) {
+    try {
+      const event = await eventService.update(
+        req.params.id,
         req.body,
-        organizerId
+        req.user.id
       );
-
-      res.json({
-        success: true,
-        data: event,
-      });
-    } catch (error) {
-      next(error);
+      res.json({ success: true, data: event });
+    } catch (e) {
+      next(e);
     }
   },
 
-  async publishEvent(req, res, next) {
+  async publish(req, res, next) {
     try {
-      const organizerId = req.user.id;
-      const { id } = req.params;
-
-      const event = await eventService.publishEvent(
-        id,
-        organizerId
+      const event = await eventService.publish(
+        req.params.id,
+        req.user.id
       );
-
-      res.json({
-        success: true,
-        data: event,
-      });
-    } catch (error) {
-      next(error);
+      res.json({ success: true, data: event });
+    } catch (e) {
+      next(e);
     }
   },
 
-  async getMyEvents(req, res, next) {
+  async remove(req, res, next) {
     try {
-      const organizerId = req.user.id;
-
-      const events = await eventService.getOrganizerEvents(
-        organizerId
-      );
-
-      res.json({
-        success: true,
-        data: events,
-      });
-    } catch (error) {
-      next(error);
+      await eventService.remove(req.params.id, req.user.id);
+      res.json({ success: true, message: "Event deleted" });
+    } catch (e) {
+      next(e);
     }
-  },
+  }
 };

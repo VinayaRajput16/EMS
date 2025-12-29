@@ -1,37 +1,16 @@
-import express from "express";
+import { Router } from "express";
 import { eventController } from "./eventController.js";
-import {authMiddleware} from "../../common/middleware/authMiddleware.js";
-import { requireRole } from "../../common/middleware/roleMiddleware.js";
+import authMiddleware from "../../common/middleware/authMiddleware.js";
+import roleMiddleware from "../../common/middleware/roleMiddleware.js";
 
-const router = express.Router();
+const router = Router();
 
-// Organizer-only routes
-router.post(
-  "/",
-  authMiddleware,
-  requireRole("ORGANIZER"),
-  eventController.createEvent
-);
+router.use(authMiddleware, roleMiddleware("ORGANIZER"));
 
-router.patch(
-  "/:id",
-  authMiddleware,
-  requireRole("ORGANIZER"),
-  eventController.updateEvent
-);
-
-router.patch(
-  "/:id/publish",
-  authMiddleware,
-  requireRole("ORGANIZER"),
-  eventController.publishEvent
-);
-
-router.get(
-  "/my",
-  authMiddleware,
-  requireRole("ORGANIZER"),
-  eventController.getMyEvents
-);
+router.post("/", eventController.create);
+router.get("/my", eventController.myEvents);
+router.patch("/:id", eventController.update);
+router.patch("/:id/publish", eventController.publish);
+router.delete("/:id", eventController.remove);
 
 export default router;
