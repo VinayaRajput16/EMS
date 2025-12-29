@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html>
+<body>
+<h2>Auth Test</h2>
+
+<h3>Register</h3>
+<input id="r_name" placeholder="name"><br>
+<input id="r_email" placeholder="email"><br>
+<input id="r_password" placeholder="password" type="password"><br>
+<button onclick="register()">Register</button>
+
+<h3>Login</h3>
+<input id="l_email" placeholder="email"><br>
+<input id="l_password" placeholder="password" type="password"><br>
+<button onclick="login()">Login</button>
+
+<pre id="out"></pre>
+
+<script src="common.js"></script>
+<script>
+console.log("auth.js loaded");
+
+async function register() {
+  const res = await fetch(API_BASE + '/auth/register', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      name: r_name.value,
+      email: r_email.value,
+      password: r_password.value
+    })
+  });
+  const data = await res.json();
+  out.textContent = JSON.stringify(data, null, 2);
+}
+
+async function login() {
+  const res = await fetch(API_BASE + '/auth/login', {
+    method: 'POST',
+    headers: {'Content-Type':'application/json'},
+    body: JSON.stringify({
+      email: l_email.value,
+      password: l_password.value
+    })
+  });
+  const data = await res.json();
+  setTokens(data);
+  out.textContent = JSON.stringify(data, null, 2);
+}
+</script>
+</body>
+</html>
