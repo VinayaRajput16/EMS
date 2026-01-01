@@ -1,11 +1,11 @@
 import { Router } from "express";
 import { eventController } from "./eventController.js";
-import authMiddleware from "../../common/middleware/authMiddleware.js";
-import roleMiddleware from "../../common/middleware/roleMiddleware.js";
+import {authMiddleware} from "../../common/middleware/authMiddleware.js";
+import {requireRole} from "../../common/middleware/roleMiddleware.js";
 
 const router = Router();
 
-router.use(authMiddleware, roleMiddleware("ORGANIZER"));
+router.use(authMiddleware, requireRole("ORGANIZER"));
 
 router.post("/", eventController.create);
 router.get("/my", eventController.myEvents);
