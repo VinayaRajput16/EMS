@@ -9,19 +9,19 @@ const seatAllocationRouter = Router();
 seatAllocationRouter.post(
   "/events/:eventId/tickets/issue",
   authMiddleware,
-  requireRole(["USER", "ORGANIZER"]),
+  requireRole("USER", "ORGANIZER"),
   (req, res, next) => {
-    // merge path param for safety
     req.body.eventId = req.params.eventId;
     seatAllocationController.issueTicket(req, res, next);
   }
 );
 
+
 // Organizer assigns / changes seat manually
 seatAllocationRouter.post(
   "/issued-tickets/:id/assign-seat",
   authMiddleware,
-  requireRole(["ORGANIZER"]),
+  requireRole("ORGANIZER"),
   seatAllocationController.assignSeat
 );
 

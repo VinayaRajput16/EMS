@@ -8,10 +8,15 @@ const ticketRouter = Router();
 // Create ticket (organizer only, on specific event)
 ticketRouter.post(
   "/events/:eventId/tickets",
+  (req, res, next) => {
+    console.log("ROUTE HIT");
+    next();
+  },
   authMiddleware,
-  requireRole(["ORGANIZER"]),
+  requireRole("ORGANIZER"),
   ticketController.create
 );
+
 
 // Get all tickets for event (public)
 ticketRouter.get("/events/:eventId/tickets", ticketController.getByEvent);
@@ -20,7 +25,7 @@ ticketRouter.get("/events/:eventId/tickets", ticketController.getByEvent);
 ticketRouter.put(
   "/tickets/:id",
   authMiddleware,
-  requireRole(["ORGANIZER"]),
+  requireRole("ORGANIZER"),
   ticketController.update
 );
 
@@ -28,7 +33,7 @@ ticketRouter.put(
 ticketRouter.delete(
   "/tickets/:id",
   authMiddleware,
-  requireRole(["ORGANIZER"]),
+ requireRole("ORGANIZER"),
   ticketController.delete
 );
 

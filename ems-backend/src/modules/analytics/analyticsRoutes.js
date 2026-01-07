@@ -9,14 +9,14 @@ const analyticsRouter = Router();
 analyticsRouter.get(
   "/organizer/sales-summary",
   authMiddleware,
-  requireRole(["ORGANIZER"]),
+  requireRole("ORGANIZER"),
   analyticsController.getOrganizerSalesSummary
 );
 
 analyticsRouter.get(
   "/organizer/events/:eventId/orders",
   authMiddleware,
-  requireRole(["ORGANIZER"]),
+  requireRole("ORGANIZER"),
   analyticsController.getOrganizerEventOrders
 );
 
@@ -24,35 +24,35 @@ analyticsRouter.get(
 analyticsRouter.get(
   "/admin/events",
   authMiddleware,
-  requireRole(["ADMIN"]),
+  requireRole("ADMIN"),
   analyticsController.getAdminAllEvents
 );
 
 analyticsRouter.get(
   "/admin/orders",
   authMiddleware,
-  requireRole(["ADMIN"]),
+  requireRole("ADMIN"),
   analyticsController.getAdminAllOrders
 );
 
 analyticsRouter.get(
   "/admin/events/:eventId",
   authMiddleware,
-  requireRole(["ADMIN"]),
+  requireRole("ADMIN"),
   analyticsController.getAdminEventDetails
 );
 
 analyticsRouter.patch(
   "/admin/events/:eventId/block",
   authMiddleware,
-  requireRole(["ADMIN"]),
+  requireRole("ADMIN"),
   analyticsController.blockEvent
 );
 
 analyticsRouter.get(
   "/admin/order-stats",
   authMiddleware,
-  requireRole(["ADMIN"]),
+  requireRole("ADMIN"),
   analyticsController.getOrderStats
 );
 

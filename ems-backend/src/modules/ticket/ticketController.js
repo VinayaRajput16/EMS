@@ -3,11 +3,14 @@ import { ticketService } from "./ticketService.js";
 export const ticketController = {
   async create(req, res, next) {
     try {
+      console.log("CONTROLLER HIT");
+
       const ticket = await ticketService.create(
         req.body,
         req.params.eventId,
         req.user.id
       );
+
       res.status(201).json({ success: true, data: ticket });
     } catch (e) {
       next(e);
@@ -43,5 +46,5 @@ export const ticketController = {
     } catch (e) {
       next(e);
     }
-  },
+  }
 };

@@ -29,28 +29,7 @@ export const orderService = {
 
     // 3️⃣ Transaction: order + seat allocation + ticket update
     return await prisma.$transaction(async (tx) => {
-      // 3.1 Create order (PENDING)
-      const order = await tx.order.create({
-        data: {
-          userId,
-          eventId,
-          ticketId,
-          quantity,
-          status: "PENDING",
-        },
-      });
-
-      // 3.2 Allocate seats (only if automated)
-      if (event.allocationMode === "AUTOMATED") {
-        await seatAllocationService({
-          tx,
-          eventId,
-          quantity,
-          orderId: order.id,
-        });
-      }
-
-      // 3.3 Validate ticket
+      // 3.1 Validate ticket first (before creating order)
       const ticket = await tx.ticket.findUnique({
         where: { id: ticketId },
       });
@@ -65,6 +44,27 @@ export const orderService = {
 
       if (ticket.availableQuantity < quantity) {
         throw new AppError("Not enough tickets available", 400);
+      }
+
+      // 3.2 Create order (PENDING)
+      const order = await tx.order.create({
+        data: {
+          userId,
+          eventId,
+          ticketId,
+          quantity,
+          status: "PENDING",
+        },
+      });
+
+      // 3.3 Allocate seats (only if automated)
+      if (event.allocationMode === "AUTOMATED") {
+        await seatAllocationService.allocateSeatsForOrder({
+          tx,
+          eventId,
+          quantity,
+          orderId: order.id,
+        });
       }
 
       // 3.4 Decrease ticket quantity

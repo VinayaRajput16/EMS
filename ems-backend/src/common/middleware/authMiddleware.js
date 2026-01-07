@@ -9,6 +9,7 @@ export const authMiddleware = (req, res, next) => {
   try {
     const payload = verifyAccessToken(token);
     req.user = { id: payload.userId, role: payload.role };
+  
     next();
   } catch {
     res.status(401).json({ message: 'Invalid token' });

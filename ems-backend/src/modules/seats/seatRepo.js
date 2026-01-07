@@ -1,22 +1,24 @@
-import prisma  from "../../config/db.js";
+import prisma from "../../config/db.js";
 
 export const seatRepo = {
-  createMany(eventId, categoryId, seatsPayload) {
+  createMany(venueId, categoryId, seatsPayload) {
     return prisma.seat.createMany({
-      data: seatsPayload.map((s) => ({
-        eventId,
+      data: seatsPayload.map(s => ({
+        venueId,
         categoryId,
         label: s.label,
+        status: "AVAILABLE"
       })),
-      skipDuplicates: true,
+      skipDuplicates: true
     });
   },
 
-  findAvailableByCategory(categoryId) {
+  findAvailableByCategory(venueId, categoryId) {
     return prisma.seat.findMany({
       where: {
+        venueId,
         categoryId,
-        status: "AVAILABLE",
+        status: "AVAILABLE"
       },
       select: {
         id: true,

@@ -9,7 +9,7 @@ const orderRouter = Router();
 orderRouter.post(
   "/orders",
   authMiddleware,
-  requireRole(["USER", "ORGANIZER"]),
+  requireRole("USER", "ORGANIZER"),
   orderController.book
 );
 
@@ -17,7 +17,7 @@ orderRouter.post(
 orderRouter.get(
   "/my-bookings",
   authMiddleware,
-  requireRole(["USER", "ORGANIZER"]),
+  requireRole("USER", "ORGANIZER"),
   orderController.getMyBookings
 );
 
@@ -25,7 +25,7 @@ orderRouter.get(
 orderRouter.get(
   "/orders/:id",
   authMiddleware,
-  requireRole(["USER", "ORGANIZER"]),
+  requireRole("USER", "ORGANIZER"),
   orderController.getDetails
 );
 
@@ -33,7 +33,7 @@ orderRouter.get(
 orderRouter.patch(
   "/orders/:id/cancel",
   authMiddleware,
-  requireRole(["USER", "ORGANIZER"]),
+  requireRole("USER", "ORGANIZER"),
   orderController.cancel
 );
 

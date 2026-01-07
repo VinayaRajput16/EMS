@@ -8,6 +8,7 @@ import ticketRouter from "./modules/ticket/ticketRoutes.js";
 import orderRouter from "./modules/order/orderRoutes.js";
 import analyticsRouter from "./modules/analytics/analyticsRoutes.js";
 import seatAllocationRouter from "./modules/seats/seatAllocationRoutes.js";
+import venueRouter from "./modules/venue/venueRoutes.js";
 
 const app = express();
 
@@ -21,6 +22,7 @@ app.use("/api", ticketRouter);
 app.use("/api", orderRouter);
 app.use("/api", seatAllocationRouter);
 app.use("/api", analyticsRouter);
+app.use("/api", venueRouter);
 
 // 2️⃣ 404 handler (only if no route matched)
 app.use(notFound);
