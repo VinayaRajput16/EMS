@@ -7,18 +7,26 @@ import {
 } from '../../common/utils/jwt.js';
 
 export const authService = {
-  async register({ name, email, password }) {
+  async register({ name, email, password, role }) {
+
     const existingUser = await userRepository.findByEmail(email);
     if (existingUser) throw new Error('Email already exists');
 
     const passwordHash = await hashPassword(password);
 
+    const allowedRoles = ['USER', 'ORGANIZER'];
+
+    const finalRole = allowedRoles.includes(role)
+      ? role
+      : 'USER';
+
     const user = await userRepository.createUser({
       name,
       email,
       passwordHash,
-      role: 'USER'
+      role: finalRole
     });
+
 
     const payload = { userId: user.id, role: user.role };
 
