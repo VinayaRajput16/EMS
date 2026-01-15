@@ -1,0 +1,601 @@
+//ticketController.js
+import { ticketService } from "./ticketService.js";
+
+export const ticketController = {
+  async create(req, res, next) {
+    try {
+      console.log("CONTROLLER HIT");
+
+      const ticket = await ticketService.create(
+        req.body,
+        req.params.eventId,
+        req.user.id
+      );
+
+      res.status(201).json({ success: true, data: ticket });
+    } catch (e) {
+      next(e);
+    }
+  },
+
+  async getByEvent(req, res, next) {
+    try {
+      const tickets = await ticketService.getEventTickets(req.params.eventId);
+      res.json({ success: true, data: tickets });
+    } catch (e) {
+      next(e);
+    }
+  },
+
+  async update(req, res, next) {
+    try {
+      const ticket = await ticketService.update(
+        req.params.id,
+        req.body,
+        req.user.id
+      );
+      res.json({ success: true, data: ticket });
+    } catch (e) {
+      next(e);
+    }
+  },
+
+  async delete(req, res, next) {
+    try {
+      await ticketService.delete(req.params.id, req.user.id);
+      res.json({ success: true, message: "Ticket deleted" });
+    } catch (e) {
+      next(e);
+    }
+  }
+};
+//ticketRoutes.js
+import { Router } from "express";
+import { ticketController } from "./ticketController.js";
+import { authMiddleware } from "../../common/middleware/authMiddleware.js";
+import { requireRole } from "../../common/middleware/roleMiddleware.js";
+
+const ticketRouter = Router();
+
+// Create ticket (organizer only, on specific event)
+ticketRouter.post(
+  "/events/:eventId/tickets",
+  (req, res, next) => {
+    console.log("ROUTE HIT");
+    next();
+  },
+  authMiddleware,
+  requireRole("ORGANIZER"),
+  ticketController.create
+);
+
+
+// Get all tickets for event (public)
+ticketRouter.get("/events/:eventId/tickets", ticketController.getByEvent);
+
+// Update ticket (organizer only)
+ticketRouter.put(
+  "/tickets/:id",
+  authMiddleware,
+  requireRole("ORGANIZER"),
+  ticketController.update
+);
+
+// Delete ticket (organizer only)
+ticketRouter.delete(
+  "/tickets/:id",
+  authMiddleware,
+ requireRole("ORGANIZER"),
+  ticketController.delete
+);
+
+export default ticketRouter;
+
+//ticketService.js
+import { ticketRepo } from "./ticketRepo.js";
+import { eventRepo } from "../event/eventRepo.js";
+import AppError from "../../common/errors/AppError.js";
+
+export const ticketService = {
+  async create(payload, eventId, organizerId) {
+    const { name, price, totalQuantity } = payload;
+
+    // Validate required fields
+    if (!name || price === undefined || !totalQuantity) {
+      throw new AppError("Missing required fields", 400);
+    }
+
+    // Validate event exists
+    const event = await eventRepo.findById(eventId);
+    if (!event) throw new AppError("Event not found", 404);
+
+    // Verify organizer ownership
+    if (event.organizerId !== organizerId) {
+      throw new AppError("Unauthorized", 403);
+    }
+
+    // Prevent ticket creation on published events
+    if (event.status === "PUBLISHED") {
+      throw new AppError("Cannot add tickets to published events", 400);
+    }
+
+    // Validate quantity and price
+    if (totalQuantity <= 0) {
+      throw new AppError("Total quantity must be greater than 0", 400);
+    }
+    if (price < 0) {
+      throw new AppError("Price cannot be negative", 400);
+    }
+
+    return ticketRepo.create({
+      eventId,
+      name,
+      price,
+      totalQuantity,
+      availableQuantity: totalQuantity,
+    });
+  },
+
+  async getEventTickets(eventId) {
+    const event = await eventRepo.findById(eventId);
+    if (!event) throw new AppError("Event not found", 404);
+
+    return ticketRepo.findByEventId(eventId);
+  },
+
+  async update(ticketId, payload, organizerId) {
+    const ticket = await ticketRepo.findById(ticketId);
+    if (!ticket) throw new AppError("Ticket not found", 404);
+
+    // Verify event ownership
+    const event = await eventRepo.findById(ticket.eventId);
+    if (event.organizerId !== organizerId) {
+      throw new AppError("Unauthorized", 403);
+    }
+
+    // Prevent updates on published events
+    if (event.status === "PUBLISHED") {
+      throw new AppError("Cannot edit tickets on published events", 400);
+    }
+
+    // Validate if updating quantities
+    if (payload.totalQuantity !== undefined && payload.totalQuantity <= 0) {
+      throw new AppError("Total quantity must be greater than 0", 400);
+    }
+    if (payload.price !== undefined && payload.price < 0) {
+      throw new AppError("Price cannot be negative", 400);
+    }
+
+    return ticketRepo.updateById(ticketId, payload);
+  },
+
+  async delete(ticketId, organizerId) {
+    const ticket = await ticketRepo.findById(ticketId);
+    if (!ticket) throw new AppError("Ticket not found", 404);
+
+    const event = await eventRepo.findById(ticket.eventId);
+    if (event.organizerId !== organizerId) {
+      throw new AppError("Unauthorized", 403);
+    }
+
+    if (event.status === "PUBLISHED") {
+      throw new AppError("Cannot delete tickets from published events", 400);
+    }
+
+    return ticketRepo.deleteById(ticketId);
+  },
+};
+
+//ticketTypeRepo
+import  prisma  from "../../config/db.js";
+
+export const ticketTypeRepo = {
+  create(eventId, payload) {
+    return prisma.ticketType.create({
+      data: {
+        eventId,
+        name: payload.name,
+        price: payload.price,
+      },
+    });
+  },
+
+  findById(id) {
+    return prisma.ticketType.findUnique({
+      where: { id },
+      include: {
+        mappings: {
+          include: {
+            seatCategory: true,
+          },
+        },
+      },
+    });
+  },
+
+  attachCategories(ticketTypeId, categoryIds) {
+    return prisma.ticketTypeCategory.createMany({
+      data: categoryIds.map((categoryId) => ({
+        ticketTypeId,
+        seatCategoryId: categoryId,
+      })),
+      skipDuplicates: true,
+    });
+  },
+};
+//ticketRepo
+import  prisma  from "../../config/db.js";
+
+export const ticketRepo = {
+  async create(payload) {
+    return prisma.ticket.create({
+      data: payload,
+    });
+  },
+
+  async findById(id) {
+    return prisma.ticket.findUnique({
+      where: { id },
+    });
+  },
+
+  async findByEventId(eventId) {
+    return prisma.ticket.findMany({
+      where: { eventId },
+      orderBy: { createdAt: "asc" },
+    });
+  },
+
+  async updateById(id, payload) {
+    return prisma.ticket.update({
+      where: { id },
+      data: payload,
+    });
+  },
+
+  async deleteById(id) {
+    return prisma.ticket.delete({
+      where: { id },
+    });
+  },
+
+  async deleteByEventId(eventId) {
+    return prisma.ticket.deleteMany({
+      where: { eventId },
+    });
+  },
+};
+//orderController
+import { orderService } from "./orderService.js";
+
+export const orderController = {
+  async book(req, res, next) {
+    try {
+      const order = await orderService.book(req.body, req.user.id);
+      res.status(201).json({ success: true, data: order });
+    } catch (e) {
+      next(e);
+    }
+  },
+
+  async getMyBookings(req, res, next) {
+    try {
+      const orders = await orderService.getMyBookings(req.user.id);
+      res.json({ success: true, data: orders });
+    } catch (e) {
+      next(e);
+    }
+  },
+
+  async getDetails(req, res, next) {
+    try {
+      const order = await orderService.getBookingDetails(
+        req.params.id,
+        req.user.id
+      );
+      res.json({ success: true, data: order });
+    } catch (e) {
+      next(e);
+    }
+  },
+
+  async cancel(req, res, next) {
+    try {
+      const order = await orderService.cancelBooking(req.params.id, req.user.id);
+      res.json({ success: true, data: order });
+    } catch (e) {
+      next(e);
+    }
+  },
+};
+//orderRepo
+import  prisma  from "../../config/db.js";
+
+export const orderRepo = {
+  async create(payload) {
+    return prisma.order.create({
+      data: payload,
+    });
+  },
+
+  async findById(id) {
+    return prisma.order.findUnique({
+      where: { id },
+      include: {
+        ticket: true,
+        event: true,
+      },
+    });
+  },
+
+  async findByUserId(userId) {
+    return prisma.order.findMany({
+      where: { userId },
+      include: {
+        ticket: true,
+        event: { select: { id: true, title: true } },
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+
+  async findByEventId(eventId) {
+    return prisma.order.findMany({
+      where: { eventId },
+      include: {
+        user: { select: { id: true, name: true, email: true } },
+        ticket: true,
+      },
+      orderBy: { createdAt: "desc" },
+    });
+  },
+
+  async findByTicketId(ticketId) {
+    return prisma.order.findMany({
+      where: { ticketId },
+    });
+  },
+
+  async updateById(id, payload) {
+    return prisma.order.update({
+      where: { id },
+      data: payload,
+      include: {
+        ticket: true,
+        event: true,
+      },
+    });
+  },
+
+  async deleteById(id) {
+    return prisma.order.delete({
+      where: { id },
+    });
+  },
+
+  // Atomic transaction: check availability and book
+  async bookWithLock(userId, eventId, ticketId, quantity) {
+    return prisma.$transaction(async (tx) => {
+      // Check ticket exists
+      const ticket = await tx.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        throw new Error("Ticket not found");
+      }
+
+      // Check availability
+      if (ticket.availableQuantity < quantity) {
+        throw new Error("Not enough tickets available");
+      }
+
+      // Reduce available quantity
+      await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          availableQuantity: ticket.availableQuantity - quantity,
+        },
+      });
+
+      // Create order
+      return tx.order.create({
+        data: {
+          userId,
+          eventId,
+          ticketId,
+          quantity,
+          status: "CONFIRMED",
+        },
+        include: {
+          ticket: true,
+          event: true,
+        },
+      });
+    });
+  },
+};
+//orderRoutes
+import { Router } from "express";
+import { orderController } from "./orderController.js";
+import { authMiddleware } from "../../common/middleware/authMiddleware.js";
+import { requireRole } from "../../common/middleware/roleMiddleware.js";
+
+const orderRouter = Router();
+
+// Book ticket (authenticated users only)
+orderRouter.post(
+  "/orders",
+  authMiddleware,
+  requireRole("USER", "ORGANIZER"),
+  orderController.book
+);
+
+// Get my bookings
+orderRouter.get(
+  "/my-bookings",
+  authMiddleware,
+  requireRole("USER", "ORGANIZER"),
+  orderController.getMyBookings
+);
+
+// Get booking details
+orderRouter.get(
+  "/orders/:id",
+  authMiddleware,
+  requireRole("USER", "ORGANIZER"),
+  orderController.getDetails
+);
+
+// Cancel booking
+orderRouter.patch(
+  "/orders/:id/cancel",
+  authMiddleware,
+  requireRole("USER", "ORGANIZER"),
+  orderController.cancel
+);
+
+export default orderRouter;
+//orderService
+import prisma from "../../config/db.js";
+import AppError from "../../common/errors/AppError.js";
+
+import { eventRepo } from "../event/eventRepo.js";
+import { ticketRepo } from "../ticket/ticketRepo.js";
+import { orderRepo } from "./orderRepo.js";
+import { seatAllocationService } from "../seats/seatAllocationService.js";
+
+export const orderService = {
+  async book(payload, userId) {
+    const { eventId, ticketId, quantity } = payload;
+
+    // 1️⃣ Basic validations
+    if (!eventId || !ticketId || !quantity) {
+      throw new AppError("Missing required fields", 400);
+    }
+
+    if (quantity <= 0) {
+      throw new AppError("Quantity must be greater than 0", 400);
+    }
+
+    // 2️⃣ Fetch and validate event
+    const event = await eventRepo.findById(eventId);
+    if (!event) throw new AppError("Event not found", 404);
+
+    if (event.status !== "PUBLISHED") {
+      throw new AppError("Only published events can be booked", 400);
+    }
+
+    // 3️⃣ Transaction: order + seat allocation + ticket update
+    return await prisma.$transaction(async (tx) => {
+      // 3.1 Validate ticket first (before creating order)
+      const ticket = await tx.ticket.findUnique({
+        where: { id: ticketId },
+      });
+
+      if (!ticket) {
+        throw new AppError("Ticket not found", 404);
+      }
+
+      if (ticket.eventId !== eventId) {
+        throw new AppError("Ticket does not belong to this event", 400);
+      }
+
+      if (ticket.availableQuantity < quantity) {
+        throw new AppError("Not enough tickets available", 400);
+      }
+
+      // 3.2 Create order (PENDING)
+      const order = await tx.order.create({
+        data: {
+          userId,
+          eventId,
+          ticketId,
+          quantity,
+          status: "PENDING",
+        },
+      });
+
+      // 3.3 Allocate seats (only if automated)
+      if (event.allocationMode === "AUTOMATED") {
+        await seatAllocationService.allocateSeatsForOrder({
+          tx,
+          eventId,
+          quantity,
+          orderId: order.id,
+        });
+      }
+
+      // 3.4 Decrease ticket quantity
+      await tx.ticket.update({
+        where: { id: ticketId },
+        data: {
+          availableQuantity: {
+            decrement: quantity,
+          },
+        },
+      });
+
+      // 3.5 Confirm order
+      return await tx.order.update({
+        where: { id: order.id },
+        data: { status: "CONFIRMED" },
+      });
+    });
+  },
+
+  async getMyBookings(userId) {
+    return orderRepo.findByUserId(userId);
+  },
+
+  async getBookingDetails(orderId, userId) {
+    const order = await orderRepo.findById(orderId);
+    if (!order) throw new AppError("Order not found", 404);
+
+    if (order.userId !== userId) {
+      throw new AppError("Unauthorized", 403);
+    }
+
+    return order;
+  },
+
+  async cancelBooking(orderId, userId) {
+    const order = await orderRepo.findById(orderId);
+    if (!order) throw new AppError("Order not found", 404);
+
+    if (order.userId !== userId) {
+      throw new AppError("Unauthorized", 403);
+    }
+
+    if (order.status === "CANCELLED") {
+      throw new AppError("Order already cancelled", 400);
+    }
+
+    return await prisma.$transaction(async (tx) => {
+      // 1️⃣ Release seats
+      await tx.seat.updateMany({
+        where: { orderId },
+        data: {
+          status: "AVAILABLE",
+          orderId: null,
+        },
+      });
+
+      // 2️⃣ Restore ticket quantity
+      await tx.ticket.update({
+        where: { id: order.ticketId },
+        data: {
+          availableQuantity: {
+            increment: order.quantity,
+          },
+        },
+      });
+
+      // 3️⃣ Cancel order
+      return await tx.order.update({
+        where: { id: orderId },
+        data: { status: "CANCELLED" },
+      });
+    });
+  },
+};

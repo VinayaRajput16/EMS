@@ -25,4 +25,12 @@ export const seatAllocationController = {
       next(e);
     }
   },
+  async getEventSeats(req, res, next) {
+    try {
+      const seats = await seatAllocationService.getEventSeats(req.params.eventId);
+      res.json({ success: true, data: seats });
+    } catch (e) {
+      next(e);
+    }
+  }
 };

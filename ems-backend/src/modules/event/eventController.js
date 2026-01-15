@@ -66,6 +66,14 @@ export const eventController = {
   } catch (err) {
     next(err);
   }
-}
+},
+async getEvent(req, res, next) {
+    try {
+      const event = await eventService.getEvent(req.params.id, req.user.id);
+      res.json({ success: true, data: event });
+    } catch (e) {
+      next(e);
+    }
+  }
 
 };

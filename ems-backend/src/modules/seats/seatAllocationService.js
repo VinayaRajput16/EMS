@@ -41,7 +41,20 @@ async function allocateSeatsForOrder({
 
   return availableSeats;
 }
-
+async function getEventSeats(eventId) {
+  const event = await eventRepo.findById(eventId);
+  if (!event) {
+    throw new AppError("Event not found", 404);
+  }
+  return await prisma.seat.findMany({
+    where: { eventId },
+    include: { seatCategory: true },
+    orderBy: [
+      { seatCategory: { priority: 'asc' } },
+      { label: 'asc' }
+    ]
+  });
+}
 export const seatAllocationService = {
   /**
    * Allocate seats for an order (used by orderService)

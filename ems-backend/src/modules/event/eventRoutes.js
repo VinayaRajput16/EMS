@@ -1,3 +1,4 @@
+// eventRoutes.js - ADD THIS LINE
 import { Router } from "express";
 import { eventController } from "./eventController.js";
 import {authMiddleware} from "../../common/middleware/authMiddleware.js";
@@ -9,6 +10,7 @@ router.use(authMiddleware, requireRole("ORGANIZER"));
 
 router.post("/", eventController.create);
 router.get("/my", eventController.myEvents);
+router.get("/:id", eventController.getEvent);  
 router.patch("/:id", eventController.update);
 router.patch("/:id/venue", eventController.attachVenue); 
 router.patch("/:id/publish", eventController.publish);

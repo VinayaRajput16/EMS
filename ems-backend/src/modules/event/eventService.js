@@ -112,6 +112,12 @@ export const eventService = {
   }
 
   return eventRepo.updateById(eventId, { venueId });
-}
+},
+ async getEvent(eventId, organizerId) {
+    const event = await eventRepo.findById(eventId);
+    if (!event) throw new AppError("Event not found", 404);
+    if (event.organizerId !== organizerId) throw new AppError("Unauthorized", 403);
+    return event;
+  }
 
 };

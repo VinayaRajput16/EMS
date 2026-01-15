@@ -1,0 +1,64 @@
+//issuedTicketRepo.js
+import  prisma  from "../../config/db.js";
+
+export const issuedTicketRepo = {
+  create(tx, payload) {
+    return tx.issuedTicket.create({
+      data: payload,
+      include: {
+        ticketType: true,
+        seat: true,
+      },
+    });
+  },
+
+  assignSeat(tx, issuedTicketId, seatId) {
+    return tx.issuedTicket.update({
+      where: { id: issuedTicketId },
+      data: { seatId },
+      include: {
+        ticketType: true,
+        seat: true,
+      },
+    });
+  },
+
+  findById(id) {
+    return prisma.issuedTicket.findUnique({
+      where: { id },
+      include: {
+        event: true,
+        ticketType: true,
+        seat: true,
+      },
+    });
+  },
+};
+//seatCategoryRepo
+import  prisma  from "../../config/db.js";
+
+export const seatCategoryRepo = {
+  create(eventId, payload) {
+    return prisma.seatCategory.create({
+      data: {
+        eventId,
+        name: payload.name,
+        priority: payload.priority,
+      },
+    });
+  },
+
+  findByEvent(eventId) {
+    return prisma.seatCategory.findMany({
+      where: { eventId },
+      orderBy: { priority: "asc" },
+    });
+  },
+
+  findById(id) {
+    return prisma.seatCategory.findUnique({
+      where: { id },
+    });
+  },
+};
+

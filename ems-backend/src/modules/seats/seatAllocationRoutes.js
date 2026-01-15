@@ -24,5 +24,14 @@ seatAllocationRouter.post(
   requireRole("ORGANIZER"),
   seatAllocationController.assignSeat
 );
+seatAllocationRouter.get(
+  "/events/:eventId/seats", 
+  authMiddleware, 
+  requireRole("ORGANIZER"),
+  (req, res, next) => {
+    req.params.eventId = req.params.eventId;
+    seatAllocationController.getEventSeats(req, res, next);
+  }
+);
 
 export default seatAllocationRouter;
