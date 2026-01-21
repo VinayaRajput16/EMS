@@ -7,8 +7,6 @@ import Home from './pages/public/Home.jsx';
 import OrganizerDashboard from './pages/organizer/Dashboard.jsx';
 import EventList from './pages/organizer/event/EventList.jsx';
 import EventCreate from './pages/organizer/event/EventCreate.jsx';
-import VenueList from './pages/organizer/venue/VenueList.jsx';
-import VenueCreate from './pages/organizer/venue/VenueCreate.jsx';
 import TicketSetup from './pages/organizer/ticket/TicketSetup.jsx';
 import EventTickets from './pages/public/EventTickets.jsx';
 import Bookings from './pages/user/Bookings.jsx';
@@ -16,6 +14,10 @@ import SeatManagement from './pages/organizer/seat/SeatManagement.jsx';
 import EventEditor from './pages/organizer/event/EventEditor.jsx';
 import EventVenueEditor from './pages/organizer/event/EventVenueEditor.jsx';
 import EventPublish from './pages/organizer/event/EventPublish.jsx';
+import AdminDashboard from './pages/admin/AdminDashboard.jsx';
+import AdminVenueList from './pages/admin/venue/VenueList.jsx';
+import AdminVenueCreate from './pages/admin/venue/VenueCreate.jsx';
+
 
 function ProtectedRoute({ children, allowedRoles = null }) {
   const { user, loading } = useAuth();
@@ -47,6 +49,18 @@ function AppContent() {
 
       {/* ✅ Public Event Tickets */}
       <Route path="/event/:eventId/tickets" element={<EventTickets />} />
+      <Route path="/admin/*" element={
+        <ProtectedRoute allowedRoles={['ADMIN']}>
+          <Routes>
+            <Route index element={<Navigate to="dashboard" replace />} />
+            <Route path="dashboard" element={<AdminDashboard />} />
+
+            {/* Venues */}
+            <Route path="venues" element={<AdminVenueList />} />
+            <Route path="venues/create" element={<AdminVenueCreate />} />
+          </Routes>
+        </ProtectedRoute>
+      } />
 
       {/* ✅ Organizer Routes */}
       <Route path="/organizer/*" element={
@@ -65,8 +79,7 @@ function AppContent() {
             <Route path="events/:eventId/publish" element={<EventPublish />} />
 
             {/* ✅ Venues */}
-            <Route path="venues" element={<VenueList />} />
-            <Route path="venues/create" element={<VenueCreate />} />
+
           </Routes>
         </ProtectedRoute>
       } />

@@ -29,7 +29,7 @@ const EventCreate = () => {
     const newEventId = response.data.data.id; // Get created event ID
     
     // ✅ REDIRECT TO EVENT EDITOR DASHBOARD
-    navigate(`/organizer/events/${newEventId}/edit`);
+    navigate(`/organizer/events/${newEventId}`);
   } catch (error) {
     console.error('Event creation failed:', error.response?.data);
     alert('Failed to create event');

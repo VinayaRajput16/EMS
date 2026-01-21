@@ -28,7 +28,7 @@ export const AuthProvider = ({ children }) => {
     try {
       const { data } = await authApi.login({ email, password });
 
-      localStorage.setItem('token', data.accessToken);
+      localStorage.setItem('accessToken', data.accessToken);
       localStorage.setItem('role', data.user.role);
       localStorage.setItem('userId', data.user.id);
 
