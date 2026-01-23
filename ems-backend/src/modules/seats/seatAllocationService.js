@@ -1,83 +1,130 @@
 import prisma from "../../config/db.js";
 import AppError from "../../common/errors/AppError.js";
 import { eventRepo } from "../event/eventRepo.js";
-import { issuedTicketRepo } from "./issuedTicketRepo.js";
 import { ticketTypeRepo } from "../ticket/ticketTypeRepo.js";
 
 /**
- * Allocate N seats for an order
- * Must be called INSIDE a Prisma transaction
+ * Utility: deterministic seat label from index
  */
-async function allocateSeatsForOrder({
-  tx,
-  eventId,
-  quantity,
-  orderId
-}) {
-  const availableSeats = await tx.seat.findMany({
-    where: {
-      eventId,
-      status: "AVAILABLE"
-    },
-    take: quantity
+function seatLabelFromIndex(index, columns) {
+  const rowIndex = Math.floor(index / columns);
+  const colIndex = index % columns;
+  const row = String.fromCharCode(65 + rowIndex); // A, B, C...
+  const col = colIndex + 1;
+  return `${row}${col}`;
+}
+
+/**
+ * CORE MVP SEAT ALLOCATION
+ * Seats are virtual and materialized only when allocated
+ */
+async function allocateSeatMVP({ tx, event, ticketType, issuedTicketId, userId }) {
+  // 1. Get venue layout
+  const venue = await tx.venue.findUnique({
+    where: { id: event.venueId },
+    select: { layoutConfig: true }
   });
 
-  if (availableSeats.length < quantity) {
-    throw new AppError("Not enough seats available", 400);
+  if (!venue?.layoutConfig) {
+    throw new AppError("Venue layout not configured", 400);
   }
 
-  const seatIds = availableSeats.map(s => s.id);
+  const { rows, columns } = venue.layoutConfig;
+  const capacity = rows * columns;
 
-  await tx.seat.updateMany({
+  // 2. Find seat category mapped to ticket type
+  const mapping = await tx.ticketTypeCategory.findFirst({
+    where: { ticketTypeId: ticketType.id },
+    include: { seatCategory: true }
+  });
+
+  if (!mapping) {
+    throw new AppError("Ticket type not mapped to a seat category", 400);
+  }
+
+  const category = mapping.seatCategory;
+
+  // 3. Fetch all categories ordered by priority
+  const categories = await tx.seatCategory.findMany({
+    where: { venueId: event.venueId },
+    orderBy: { priority: "asc" }
+  });
+
+  // 4. Calculate seat index range for this category
+  let startIndex = 0;
+  for (const c of categories) {
+    if (c.id === category.id) break;
+    startIndex += c.maxSeats;
+  }
+  const endIndex = startIndex + category.maxSeats;
+
+  if (endIndex > capacity) {
+    throw new AppError("Seat categories exceed venue capacity", 500);
+  }
+
+  // 5. Count already allocated seats in this category
+  const allocatedCount = await tx.seat.count({
     where: {
-      id: { in: seatIds },
-      status: "AVAILABLE"
-    },
-    data: {
-      status: "ALLOCATED",
-      orderId: orderId
+      eventId: event.id,
+      categoryId: category.id
     }
   });
 
-  return availableSeats;
-}
-async function getEventSeats(eventId) {
-  const event = await eventRepo.findById(eventId);
-  if (!event) {
-    throw new AppError("Event not found", 404);
+  if (allocatedCount >= category.maxSeats) {
+    throw new AppError(`No seats left in ${category.name}`, 400);
   }
-  return await prisma.seat.findMany({
-    where: { eventId },
-    include: { seatCategory: true },
-    orderBy: [
-      { seatCategory: { priority: 'asc' } },
-      { label: 'asc' }
-    ]
+
+  // 6. Get taken labels for this event
+  const takenSeats = await tx.seat.findMany({
+    where: { eventId: event.id },
+    select: { label: true }
+  });
+  const takenSet = new Set(takenSeats.map(s => s.label));
+
+  // 7. Find first free seat label
+  let chosenLabel = null;
+  for (let i = startIndex; i < endIndex; i++) {
+    const label = seatLabelFromIndex(i, columns);
+    if (!takenSet.has(label)) {
+      chosenLabel = label;
+      break;
+    }
+  }
+
+  if (!chosenLabel) {
+    throw new AppError(`No seats left in ${category.name}`, 400);
+  }
+
+  // 8. Persist allocated seat
+  return tx.seat.create({
+    data: {
+      eventId: event.id,
+      categoryId: category.id,
+      label: chosenLabel,
+      status: "ALLOCATED",
+      orderId: issuedTicketId,
+      userId
+    }
   });
 }
+
 export const seatAllocationService = {
   /**
-   * Allocate seats for an order (used by orderService)
-   */
-  allocateSeatsForOrder,
-
-  /**
-   * Issue a ticket with automatic seat allocation if event is in AUTOMATED mode
+   * ISSUE TICKET + AUTO ALLOCATE SEAT (MVP)
+   * Public API remains unchanged
    */
   async issueTicketWithAllocation(payload, userId) {
     const { eventId, ticketTypeId } = payload;
 
     if (!eventId || !ticketTypeId) {
-      throw new AppError("Missing required fields: eventId and ticketTypeId", 400);
+      throw new AppError("Missing required fields", 400);
     }
 
-    // Fetch event to check allocation mode
     const event = await eventRepo.findById(eventId);
     if (!event) {
       throw new AppError("Event not found", 404);
     }
 
-    // Fetch ticket type
     const ticketType = await ticketTypeRepo.findById(ticketTypeId);
     if (!ticketType) {
       throw new AppError("Ticket type not found", 404);
@@ -87,102 +134,39 @@ export const seatAllocationService = {
       throw new AppError("Ticket type does not belong to this event", 400);
     }
 
-    return await prisma.$transaction(async (tx) => {
-      // Create issued ticket
-      const issuedTicket = await issuedTicketRepo.create(tx, {
-        userId,
-        eventId,
-        ticketTypeId,
-        seatId: null, // Will be assigned if automated
-      });
-
-      // Auto-allocate seat if event is in AUTOMATED mode
-      if (event.allocationMode === "AUTOMATED") {
-        const availableSeats = await tx.seat.findMany({
-          where: {
-            eventId,
-            status: "AVAILABLE"
-          },
-          take: 1
-        });
-
-        if (availableSeats.length > 0) {
-          const seat = availableSeats[0];
-          await tx.seat.update({
-            where: { id: seat.id },
-            data: {
-              status: "ALLOCATED"
-            }
-          });
-
-          await tx.issuedTicket.update({
-            where: { id: issuedTicket.id },
-            data: { seatId: seat.id }
-          });
-
-          // Reload with seat within transaction
-          return await tx.issuedTicket.findUnique({
-            where: { id: issuedTicket.id },
-            include: {
-              ticketType: true,
-              seat: true,
-            },
-          });
+    return prisma.$transaction(async (tx) => {
+      // 1. Create issued ticket
+      const issuedTicket = await tx.issuedTicket.create({
+        data: {
+          userId,
+          eventId,
+          ticketTypeId,
+          seatId: null
         }
-      }
-
-      return issuedTicket;
-    });
-  },
-
-  /**
-   * Manually assign a seat to an issued ticket (for organizers)
-   */
-  async assignSeatManually(issuedTicketId, seatId, userId) {
-    if (!issuedTicketId || !seatId) {
-      throw new AppError("Missing required fields: issuedTicketId and seatId", 400);
-    }
-
-    // Fetch issued ticket
-    const issuedTicket = await issuedTicketRepo.findById(issuedTicketId);
-    if (!issuedTicket) {
-      throw new AppError("Issued ticket not found", 404);
-    }
-
-    // Check if seat exists and is available
-    const seat = await prisma.seat.findUnique({
-      where: { id: seatId }
-    });
-
-    if (!seat) {
-      throw new AppError("Seat not found", 404);
-    }
-
-    if (seat.eventId !== issuedTicket.eventId) {
-      throw new AppError("Seat does not belong to this event", 400);
-    }
-
-    if (seat.status === "ALLOCATED" && seat.id !== issuedTicket.seatId) {
-      throw new AppError("Seat is already allocated", 400);
-    }
-
-    return await prisma.$transaction(async (tx) => {
-      // If ticket already has a seat, release it
-      if (issuedTicket.seatId) {
-        await tx.seat.update({
-          where: { id: issuedTicket.seatId },
-          data: { status: "AVAILABLE" }
-        });
-      }
-
-      // Assign new seat
-      await tx.seat.update({
-        where: { id: seatId },
-        data: { status: "ALLOCATED" }
       });
 
-      // Update issued ticket
-      return await issuedTicketRepo.assignSeat(tx, issuedTicketId, seatId);
+      // 2. Allocate seat dynamically
+      const seat = await allocateSeatMVP({
+        tx,
+        event,
+        ticketType,
+        issuedTicketId: issuedTicket.id,
+        userId
+      });
+
+      // 3. Attach seat to issued ticket
+      await tx.issuedTicket.update({
+        where: { id: issuedTicket.id },
+        data: { seatId: seat.id }
+      });
+
+      return tx.issuedTicket.findUnique({
+        where: { id: issuedTicket.id },
+        include: {
+          seat: true,
+          ticketType: true
+        }
+      });
     });
   }
 };

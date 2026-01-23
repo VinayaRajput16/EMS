@@ -1,107 +1,95 @@
-import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
-import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { AuthProvider, useAuth } from './context/AuthContext.js';
-import Login from './pages/auth/Login.jsx';
-import Register from './pages/auth/Register.jsx';
-import Home from './pages/public/Home.jsx';
-import OrganizerDashboard from './pages/organizer/Dashboard.jsx';
-import EventList from './pages/organizer/event/EventList.jsx';
-import EventCreate from './pages/organizer/event/EventCreate.jsx';
-import TicketSetup from './pages/organizer/ticket/TicketSetup.jsx';
-import EventTickets from './pages/public/EventTickets.jsx';
-import Bookings from './pages/user/Bookings.jsx';
-import SeatManagement from './pages/organizer/seat/SeatManagement.jsx';
-import EventEditor from './pages/organizer/event/EventEditor.jsx';
-import EventVenueEditor from './pages/organizer/event/EventVenueEditor.jsx';
-import EventPublish from './pages/organizer/event/EventPublish.jsx';
-import AdminDashboard from './pages/admin/AdminDashboard.jsx';
-import AdminVenueList from './pages/admin/venue/VenueList.jsx';
-import AdminVenueCreate from './pages/admin/venue/VenueCreate.jsx';
+// src/App.jsx
+import { BrowserRouter, Routes, Route } from "react-router-dom";
+import AdminLogin from "./pages/admin/Login";
+import AdminLayout from "./layouts/AdminLayout";
+import RequireAuth from "./auth/RequireAuth";
+import RequireRole from "./auth/RequireRole";
+import LayoutList from "./pages/admin/VenueLayouts/List";
+import LayoutCreate from "./pages/admin/VenueLayouts/Create";
+import LayoutView from "./pages/admin/VenueLayouts/View";
+import LayoutEdit from "./pages/admin/VenueLayouts/Edit";
+import AdminEventList from "./pages/admin/Events/List";
+import AdminEventDetails from "./pages/admin/Events/Details";
+import OrganizerList from "./pages/admin/Organizers/List";
+import OrganizerProfile from "./pages/admin/Organizers/Profile";
+import AdminAnalytics from "./pages/admin/Analytics";
+import OrganizerLogin from "./pages/organizer/Login";
+import OrganizerLayout from "./layouts/OrganizerLayout";
+import OrganizerDashboard from "./pages/organizer/Dashboard";
+import OrganizerVenueList from "./pages/organizer/Venues/List";
+import OrganizerVenueCreate from "./pages/organizer/Venues/Create";
+import OrganizerVenueView from "./pages/organizer/Venues/View";
+import OrganizerEventList from "./pages/organizer/Events/List";
+import OrganizerEventCreate from "./pages/organizer/Events/Create";
+import OrganizerEventView from "./pages/organizer/Events/View";
+import OrganizerAssignVenue from "./pages/organizer/Events/AssignVenue";
+import OrganizerEventEdit from "./pages/organizer/Events/Edit";
+import SeatCategoryList from "./pages/organizer/SeatCategories/List";
+import SeatCategoryCreate from "./pages/organizer/SeatCategories/Create";
+import OrganizerTicketManage from "./pages/organizer/Tickets/Manage";
 
-
-function ProtectedRoute({ children, allowedRoles = null }) {
-  const { user, loading } = useAuth();
-
-  if (loading) return <div className="flex justify-center items-center h-64"><div className="text-lg">Loading...</div></div>;
-  if (!user) return <Navigate to="/login" replace />;
-  if (allowedRoles && !allowedRoles.includes(user.role)) return <Navigate to="/" replace />;
-
-  return children;
-}
-
-function AppContent() {
+export default function App() {
   return (
-    <Routes>
-      {/* ✅ Public Routes */}
-      <Route path="/" element={<Home />} />
-      <Route path="/login" element={<Login />} />
-      <Route path="/register" element={<Register />} />
+    <BrowserRouter>
+      <Routes>
+        <Route path="/admin/login" element={<AdminLogin />} />
 
-      {/* ✅ User Routes */}
-      <Route path="/user/*" element={
-        <ProtectedRoute allowedRoles={['USER', 'ORGANIZER']}>
-          <Routes>
-            <Route path="bookings" element={<Bookings />} />
-            <Route index element={<Navigate to="bookings" replace />} />
-          </Routes>
-        </ProtectedRoute>
-      } />
+        <Route
+          path="/admin"
+          element={
+            <RequireAuth>
+              <RequireRole role="ADMIN">
+                <AdminLayout />
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route path="dashboard" element={<div>Admin Dashboard</div>} />
+          <Route path="venue-layouts" element={<LayoutList />} />
+          <Route path="venue-layouts/create" element={<LayoutCreate />} />
+          <Route path="venue-layouts/:id" element={<LayoutView />} />
+          <Route path="venue-layouts/:id/edit" element={<LayoutEdit />} />
+          <Route path="events" element={<AdminEventList />} />
+          <Route path="events/:id" element={<AdminEventDetails />} />
+          <Route path="organizers" element={<OrganizerList />} />
+          <Route path="organizers/:id" element={<OrganizerProfile />} />
+          <Route path="analytics" element={<AdminAnalytics />} />
+        </Route>
+        <Route path="/organizer/login" element={<OrganizerLogin />} />
+        <Route
+          path="/organizer"
+          element={
+            <RequireAuth>
+              <RequireRole role="ORGANIZER">
+                <OrganizerLayout />
+              </RequireRole>
+            </RequireAuth>
+          }
+        >
+          <Route path="dashboard" element={<OrganizerDashboard />} />
+          <Route path="venues" element={<OrganizerVenueList />} />
+          <Route path="venues/create" element={<OrganizerVenueCreate />} />
+          <Route path="venues/:id" element={<OrganizerVenueView />} />
+          <Route path="events" element={<OrganizerEventList />} />
+          <Route path="events/create" element={<OrganizerEventCreate />} />
+          <Route path="events/:id" element={<OrganizerEventView />} />
+          <Route path="/organizer/events/:id/assign-venue" element={<OrganizerAssignVenue />} />
+          <Route path="/organizer/events/:id/edit" element={<OrganizerEventEdit />} />
+          <Route
+            path="/organizer/events/:id/seat-categories"
+            element={<SeatCategoryList />}
+          />
 
-      {/* ✅ Public Event Tickets */}
-      <Route path="/event/:eventId/tickets" element={<EventTickets />} />
-      <Route path="/admin/*" element={
-        <ProtectedRoute allowedRoles={['ADMIN']}>
-          <Routes>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<AdminDashboard />} />
-
-            {/* Venues */}
-            <Route path="venues" element={<AdminVenueList />} />
-            <Route path="venues/create" element={<AdminVenueCreate />} />
-          </Routes>
-        </ProtectedRoute>
-      } />
-
-      {/* ✅ Organizer Routes */}
-      <Route path="/organizer/*" element={
-        <ProtectedRoute allowedRoles={['ORGANIZER']}>
-          <Routes>
-            <Route index element={<Navigate to="dashboard" replace />} />
-            <Route path="dashboard" element={<OrganizerDashboard />} />
-
-            {/* ✅ Events - CLEAN STRUCTURE */}
-            <Route path="events" element={<EventList />} />
-            <Route path="events/create" element={<EventCreate />} />
-            <Route path="events/:eventId" element={<EventEditor />} />
-            <Route path="events/:eventId/venue" element={<EventVenueEditor />} />
-            <Route path="events/:eventId/seats" element={<SeatManagement />} />
-            <Route path="events/:eventId/tickets" element={<TicketSetup />} />
-            <Route path="events/:eventId/publish" element={<EventPublish />} />
-
-            {/* ✅ Venues */}
-
-          </Routes>
-        </ProtectedRoute>
-      } />
-
-      {/* ✅ 404 Catch-all */}
-      <Route path="*" element={<Navigate to="/" replace />} />
-    </Routes>
+          <Route
+            path="/organizer/events/:id/seat-categories/create"
+            element={<SeatCategoryCreate />}
+          />
+          <Route
+            path="events/:id/tickets"
+            element={<OrganizerTicketManage />}
+          />
+        </Route>
+      </Routes>
+    </BrowserRouter>
   );
 }
-
-const queryClient = new QueryClient();
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <Router>
-        <AuthProvider>
-          <AppContent />
-        </AuthProvider>
-      </Router>
-    </QueryClientProvider>
-  );
-}
-
-export default App;

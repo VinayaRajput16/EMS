@@ -35,16 +35,16 @@ model Event {
   startDateTime DateTime
   endDateTime   DateTime
 
-  venueId     String? // optional
-  organizerId String
+  venueLayoutTemplateId String?
+  venueLayoutTemplate   VenueLayoutTemplate? @relation(fields: [venueLayoutTemplateId], references: [id])
+  organizerId           String
 
   status EventStatus @default(DRAFT)
 
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
-  organizer User   @relation(fields: [organizerId], references: [id])
-  venue     Venue? @relation(fields: [venueId], references: [id]) // ← FIX HERE
+  organizer User @relation(fields: [organizerId], references: [id])
 
   allocationMode AllocationMode @default(MANUAL)
 
@@ -64,20 +64,26 @@ enum EventStatus {
 }
 
 model Venue {
-  id          String   @id @default(uuid())
+  id          String @id @default(uuid())
   name        String
   location    String
   capacity    Int
   organizerId String
-  createdAt   DateTime @default(now())
-  updatedAt   DateTime @updatedAt
 
-  organizer      User           @relation(fields: [organizerId], references: [id])
-  events         Event[]
+  layoutTemplateId String? // TEMPORARY
+  layoutConfig     Json? // TEMPORARY
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
+
+  organizer      User                 @relation(fields: [organizerId], references: [id])
+  layoutTemplate VenueLayoutTemplate? @relation(fields: [layoutTemplateId], references: [id])
+
   seatCategories SeatCategory[]
   seats          Seat[]
 
   @@index([organizerId])
+  @@index([layoutTemplateId])
 }
 
 model Ticket {
@@ -174,6 +180,7 @@ model SeatCategory {
   venueId   String
   name      String
   priority  Int
+  maxSeats  Int?
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
 
@@ -207,4 +214,21 @@ enum AllocationMode {
 enum SeatStatus {
   AVAILABLE
   ALLOCATED
+}
+
+model VenueLayoutTemplate {
+  id         String     @id @default(uuid())
+  name       String
+  layoutType LayoutType
+  schema     Json // RULES ONLY (no values)
+  createdAt  DateTime   @default(now())
+  updatedAt  DateTime   @updatedAt
+  venues     Venue[]
+  events     Event[]
+}
+
+enum LayoutType {
+  ROW_COLUMN
+  OPEN_CROWD
+  ROUND_TABLE
 }

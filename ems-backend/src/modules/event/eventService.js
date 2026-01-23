@@ -1,6 +1,6 @@
 import { eventRepo } from "./eventRepo.js";
 import AppError from "../../common/errors/AppError.js";
-import prisma from "../../config/db.js";
+import { venueRepo } from "../venue/venueRepo.js";
 
 export const eventService = {
   async create(payload, organizerId) {
@@ -9,7 +9,7 @@ export const eventService = {
       description,
       startDateTime,
       endDateTime,
-      allocationMode
+      allocationMode,
     } = payload;
 
     if (!title || !startDateTime || !endDateTime) {
@@ -33,9 +33,8 @@ export const eventService = {
       organizerId,
       status: "DRAFT",
       allocationMode: allocationMode ?? "MANUAL",
-      startDateTime: start,   // ✅ REQUIRED FIX
-      endDateTime: end,       // ✅ REQUIRED FIX
-      venueId: null           // ✅ REQUIRED IF OPTIONAL IN SCHEMA
+      startDateTime: start,
+      endDateTime: end,
     });
   },
 
@@ -59,46 +58,49 @@ export const eventService = {
   },
 
   async publish(eventId, organizerId) {
-    return await prisma.$transaction(async (tx) => {
-      const event = await tx.event.findUnique({
-        where: { id: eventId }
-      });
-      if (!event) throw new AppError("Event not found", 404);
+    const event = await eventRepo.findById(eventId);
+    // 1. Venue assigned
+    if (!event.venueLayoutTemplateId) {
+      throw new AppError("Venue must be assigned before publishing", 400);
+    }
 
-      if (event.organizerId !== organizerId) {
-        throw new AppError("Unauthorized", 403);
-      }
+    // 2. Seat categories exist
+    const seatCategories = await seatCategoryRepo.findByEvent(eventId);
+    if (!seatCategories || seatCategories.length === 0) {
+      throw new AppError(
+        "Seat categories must be created before publishing",
+        400
+      );
+    }
 
-      if (event.status !== "DRAFT") {
-        throw new AppError("Only draft events can be published", 400);
-      }
+    // 3. Tickets exist
+    const tickets = await ticketRepo.findByEvent(eventId);
+    if (!tickets || tickets.length === 0) {
+      throw new AppError(
+        "At least one ticket must be created before publishing",
+        400
+      );
+    }
 
-      if (!event.venueId) {
-        throw new AppError("Venue must be attached before publishing", 400);
-      }
+    if (!event) {
+      throw new AppError("Event not found", 404);
+    }
 
-      const seatCount = await tx.seat.count({
-        where: { venueId: event.venueId }
-      });
+    if (event.organizerId !== organizerId) {
+      throw new AppError("Unauthorized", 403);
+    }
 
-      if (seatCount === 0) {
-        throw new AppError("Venue has no seats configured", 400);
-      }
+    if (event.status !== "DRAFT") {
+      throw new AppError("Only draft events can be published", 400);
+    }
 
-      await tx.seat.updateMany({
-        where: {
-          venueId: event.venueId,
-          eventId: null
-        },
-        data: {
-          eventId: event.id
-        }
-      });
+    // ✅ FIX: check correct field
+    if (!event.venueLayoutTemplateId) {
+      throw new AppError("Venue must be assigned before publishing", 400);
+    }
 
-      return tx.event.update({
-        where: { id: eventId },
-        data: { status: "PUBLISHED" }
-      });
+    return eventRepo.updateById(eventId, {
+      status: "PUBLISHED",
     });
   },
 
@@ -125,15 +127,25 @@ export const eventService = {
       throw new AppError("Venue can only be set for DRAFT events", 400);
     }
 
-    return eventRepo.updateById(eventId, { venueId });
+    // ✅ FIX: fetch venue & store layout template, not venueId
+    const venue = await venueRepo.findById(venueId);
+    if (!venue) {
+      throw new AppError("Venue not found", 404);
+    }
+
+    return eventRepo.updateById(eventId, {
+      venueLayoutTemplateId: venue.layoutTemplateId,
+    });
   },
 
   async getEvent(eventId, organizerId) {
     const event = await eventRepo.findById(eventId);
     if (!event) throw new AppError("Event not found", 404);
+
     if (event.organizerId !== organizerId) {
       throw new AppError("Unauthorized", 403);
     }
+
     return event;
-  }
+  },
 };

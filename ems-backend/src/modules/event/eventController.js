@@ -55,25 +55,29 @@ export const eventController = {
       next(e);
     }
   },
+
   async attachVenue(req, res, next) {
-  try {
-    const event = await eventService.attachVenue(
-      req.params.id,
-      req.body.venueId,
-      req.user.id
-    );
-    res.json({ success: true, data: event });
-  } catch (err) {
-    next(err);
-  }
-},
-async getEvent(req, res, next) {
     try {
-      const event = await eventService.getEvent(req.params.id, req.user.id);
+      const event = await eventService.attachVenue(
+        req.params.id,
+        req.body.venueId,
+        req.user.id
+      );
       res.json({ success: true, data: event });
     } catch (e) {
       next(e);
     }
-  }
+  },
 
+  async getEvent(req, res, next) {
+    try {
+      const event = await eventService.getEvent(
+        req.params.id,
+        req.user.id
+      );
+      res.json({ success: true, data: event });
+    } catch (e) {
+      next(e);
+    }
+  },
 };

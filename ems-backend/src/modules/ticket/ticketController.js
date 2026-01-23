@@ -3,19 +3,23 @@ import { ticketService } from "./ticketService.js";
 export const ticketController = {
   async create(req, res, next) {
     try {
-      console.log("CONTROLLER HIT");
+      const { eventId } = req.params;
 
-      const ticket = await ticketService.create(
-        req.body,
-        req.params.eventId,
-        req.user.id
-      );
+      const ticket = await ticketService.create({
+        ...req.body,
+        eventId
+      });
 
-      res.status(201).json({ success: true, data: ticket });
+
+      res.status(201).json({
+        success: true,
+        data: ticket
+      });
     } catch (e) {
       next(e);
     }
-  },
+  }
+  ,
 
   async getByEvent(req, res, next) {
     try {
