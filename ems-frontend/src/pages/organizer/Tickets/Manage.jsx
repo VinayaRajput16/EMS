@@ -31,7 +31,7 @@ export default function OrganizerTicketManage() {
     await organizerApi.createTicketType(eventId, {
       name,
       price: Number(price),
-      quantity: Number(quantity),
+      totalQuantity: Number(quantity),
     });
 
     setName("");
@@ -42,7 +42,7 @@ export default function OrganizerTicketManage() {
   }
 
   async function removeTicket(id) {
-    await organizerApi.deleteTicketType(id);
+    await organizerApi.deleteTicket(id);
     await loadTickets();
   }
 

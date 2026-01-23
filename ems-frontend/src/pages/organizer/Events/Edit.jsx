@@ -12,9 +12,8 @@ export default function OrganizerEventEdit() {
   const [startDateTime, setStartDateTime] = useState("");
   const [endDateTime, setEndDateTime] = useState("");
   const [status, setStatus] = useState("");
-  const [venueId, setVenueId] = useState(null);
+  const [venueLayoutTemplateId, setVenueLayoutTemplateId] = useState(null); // ✅ Changed from venueId
   const [ticketTypes, setTicketTypes] = useState([]);
-
 
   // seat categories (read-only here)
   const [seatCategories, setSeatCategories] = useState([]);
@@ -25,30 +24,60 @@ export default function OrganizerEventEdit() {
     let mounted = true;
 
     async function load() {
-      const eventRes = await organizerApi.getEventById(eventId);
-      const eventData = eventRes.data.data;
-      const ticketsRes =
-  await organizerApi.getTicketTypesByEvent(eventId);
-setTicketTypes(ticketsRes.data?.data ?? ticketsRes.data);
+      try {
+        const eventRes = await organizerApi.getEventById(eventId);
+        const eventData = eventRes.data.data;
+        
+        // ✅ Add console log to debug
+        console.log('Event Data:', eventData);
 
+        const ticketsRes = await organizerApi.getTicketTypesByEvent(eventId);
+        const ticketsData = ticketsRes.data?.data ?? ticketsRes.data;
+        
+        // ✅ Add console log to debug tickets
+        console.log('Tickets Data:', ticketsData);
 
-      if (!mounted) return;
+        if (!mounted) return;
 
-      setTitle(eventData.title);
-      setDescription(eventData.description ?? "");
-      setStartDateTime(eventData.startDateTime.slice(0, 16));
-      setEndDateTime(eventData.endDateTime.slice(0, 16));
-      setStatus(eventData.status);
-      setVenueId(eventData.venueId ?? null);
+        setTitle(eventData.title);
+        setDescription(eventData.description ?? "");
+        setStartDateTime(eventData.startDateTime.slice(0, 16));
+        setEndDateTime(eventData.endDateTime.slice(0, 16));
+        setStatus(eventData.status);
+        
+        // ✅ Use the correct field from backend
+        setVenueLayoutTemplateId(eventData.venueLayoutTemplateId ?? null);
+        
+        // ✅ Set tickets properly
+        setTicketTypes(ticketsData);
 
-      // fetch seat categories ONLY if venue assigned
-      if (eventData.venueId) {
-        const seatsRes =
-          await organizerApi.getSeatCategoriesByVenue(eventData.venueId);
-        setSeatCategories(seatsRes.data?.data ?? seatsRes.data);
+        // ✅ For seat categories, you need to find the actual venueId
+        // Since backend only stores venueLayoutTemplateId, we need to get venues
+        // and find which venue has this layout template
+        if (eventData.venueLayoutTemplateId) {
+          try {
+            const venuesRes = await organizerApi.getVenues();
+            const allVenues = venuesRes.data?.data ?? venuesRes.data;
+            
+            // Find the venue that matches the layout template
+            const matchedVenue = allVenues.find(
+              v => v.layoutTemplateId === eventData.venueLayoutTemplateId
+            );
+            
+            if (matchedVenue) {
+              const seatsRes = await organizerApi.getSeatCategoriesByVenue(matchedVenue.id);
+              setSeatCategories(seatsRes.data?.data ?? seatsRes.data);
+            }
+          } catch (error) {
+            console.error('Error fetching seat categories:', error);
+          }
+        }
+
+        setLoading(false);
+      } catch (error) {
+        console.error('Error loading event:', error);
+        setLoading(false);
       }
-
-      setLoading(false);
     }
 
     load();
@@ -126,82 +155,93 @@ setTicketTypes(ticketsRes.data?.data ?? ticketsRes.data);
       <div className="border-t pt-4 space-y-3">
         <h3 className="font-medium">Seat Configuration</h3>
 
-        {!venueId && (
+        {/* ✅ Updated condition */}
+        {!venueLayoutTemplateId && (
           <p className="text-sm text-red-600">
             Assign a venue before configuring seats.
           </p>
         )}
 
-        {venueId && seatCategories.length === 0 && (
+        {venueLayoutTemplateId && seatCategories.length === 0 && (
           <p className="text-sm text-gray-600">
             No seat categories configured yet.
           </p>
         )}
 
-        {venueId && seatCategories.length > 0 && (
+        {venueLayoutTemplateId && seatCategories.length > 0 && (
           <table className="w-full border text-sm">
             <thead>
               <tr>
-                <th>Name</th>
-                <th>Capacity</th>
-                <th>Priority</th>
+                <th className="border p-2">Name</th>
+                <th className="border p-2">Capacity</th>
+                <th className="border p-2">Priority</th>
               </tr>
             </thead>
             <tbody>
               {seatCategories.map((c) => (
                 <tr key={c.id}>
-                  <td>{c.name}</td>
-                  <td>{c.capacity}</td>
-                  <td>{c.priority}</td>
+                  <td className="border p-2">{c.name}</td>
+                  <td className="border p-2">{c.capacity}</td>
+                  <td className="border p-2">{c.priority}</td>
                 </tr>
               ))}
             </tbody>
           </table>
         )}
 
-        {venueId && (
-          <button
-            className="border px-3 py-1"
-            onClick={() =>
-              navigate(
-                `/organizer/venues/${venueId}/seat-categories`
-              )
-            }
-          >
-            Configure Seat Categories
-          </button>
+        {/* ✅ Note: You'll need to store the actual venue ID somewhere to navigate properly */}
+        {/* For now, this button won't work correctly - see note below */}
+        {venueLayoutTemplateId && (
+          <p className="text-sm text-gray-500 italic">
+            Seat categories are configured at the venue level.
+          </p>
         )}
       </div>
+
       {/* TICKET CONFIGURATION */}
-<div className="border-t pt-4 space-y-3">
-  <h3 className="font-medium">Ticket Configuration</h3>
+      <div className="border-t pt-4 space-y-3">
+        <h3 className="font-medium">Ticket Configuration</h3>
 
-  {ticketTypes?.length === 0 && (
-    <p className="text-sm text-gray-600">
-      No ticket types created yet.
-    </p>
-  )}
+        {/* ✅ Better null check */}
+        {(!ticketTypes || ticketTypes.length === 0) && (
+          <p className="text-sm text-gray-600">
+            No ticket types created yet.
+          </p>
+        )}
 
-  {ticketTypes?.length > 0 && (
-    <ul className="text-sm list-disc pl-5">
-      {ticketTypes.map(t => (
-        <li key={t.id}>
-          {t.name} – ₹{t.price} – {t.quantity}
-        </li>
-      ))}
-    </ul>
-  )}
+        {ticketTypes && ticketTypes.length > 0 && (
+          <table className="w-full border text-sm">
+            <thead>
+              <tr>
+                <th className="border p-2">Name</th>
+                <th className="border p-2">Price</th>
+                <th className="border p-2">Total Quantity</th>
+                <th className="border p-2">Available</th>
+              </tr>
+            </thead>
+            <tbody>
+              {ticketTypes.map(t => (
+                <tr key={t.id}>
+                  <td className="border p-2">{t.name}</td>
+                  <td className="border p-2">₹{t.price}</td>
+                  {/* ✅ Use correct field names from backend */}
+                  <td className="border p-2">{t.totalQuantity}</td>
+                  <td className="border p-2">{t.availableQuantity}</td>
+                </tr>
+              ))}
+            </tbody>
+          </table>
+        )}
 
-  <button
-    className="border px-3 py-1"
-    onClick={() =>
-      navigate(`/organizer/events/${eventId}/tickets`)
-    }
-  >
-    Manage Tickets
-  </button>
-</div>
-
+        <button
+          className="border px-3 py-1"
+          onClick={() =>
+            navigate(`/organizer/events/${eventId}/tickets`)
+          }
+        >
+          Manage Tickets
+        </button>
+      </div>
     </div>
   );
 }

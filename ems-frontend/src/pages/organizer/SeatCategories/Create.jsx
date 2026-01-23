@@ -3,7 +3,7 @@ import { useParams, useNavigate } from "react-router-dom";
 import { organizerApi } from "../../../api/organizer.api";
 
 export default function SeatCategoryCreate() {
-  const { id: eventId } = useParams();
+  const { venueId } = useParams();  // ✅ Changed from eventId to venueId
   const navigate = useNavigate();
 
   const [name, setName] = useState("");
@@ -13,14 +13,13 @@ export default function SeatCategoryCreate() {
   async function submit(e) {
     e.preventDefault();
 
-    await organizerApi.createSeatCategory({
-      eventId,
+    await organizerApi.createSeatCategoryForVenue(venueId, {  // ✅ Correct function name
       name,
       capacity: Number(capacity),
       priority: Number(priority),
     });
 
-    navigate(`/organizer/events/${eventId}/seat-categories`);
+    navigate(`/organizer/venues/${venueId}/seat-categories`);  // ✅ Navigate to venue page
   }
 
   return (

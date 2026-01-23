@@ -79,14 +79,8 @@ export default function App() {
             path="/organizer/events/:id/seat-categories"
             element={<SeatCategoryList />}
           />
-
-          <Route
-            path="/organizer/events/:id/seat-categories/create"
-            element={<SeatCategoryCreate />}
-          />
-          <Route
-            path="events/:id/tickets"
-            element={<OrganizerTicketManage />}
+          <Route path="/organizer/venues/:venueId/seat-categories/create" element={<SeatCategoryCreate />} />
+          <Route path="events/:id/tickets" element={<OrganizerTicketManage />}
           />
         </Route>
       </Routes>
