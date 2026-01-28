@@ -2,49 +2,64 @@ import api from "./axios";
 
 /**
  * Organizer API
- * Uses existing backend routes with ORGANIZER role enforcement
+ * Scope: Events → Venue → Seat Categories → Tickets
+ * Matches app.js routing exactly
  */
 export const organizerApi = {
-  // ===== Venues =====
-  getVenues: () => api.get("/api/venues"),
-  getVenueById: (id) => api.get(`/api/venues/${id}`),
-  createVenue: (data) => api.post("/api/venues", data),
+  // ===================== EVENTS =====================
+  getMyEvents: () =>
+    api.get("/events/my"),
 
-  // ===== Events =====
-  getMyEvents: () => api.get("/events/my"),
-  getEventById: (id) => api.get(`/events/${id}`),
-  createEvent: (data) => api.post("/events", data),
-  updateEvent: (id, data) => api.patch(`/events/${id}`, data),
-  assignVenueToEvent: (eventId, venueId) =>
-    api.patch(`/events/${eventId}/venue`, { venueId }),
-  publishEvent: (id) => api.patch(`/events/${id}/publish`),
-  deleteEvent: (id) => api.delete(`/events/${id}`),
+  getEventById: (eventId) =>
+    api.get(`/events/${eventId}`),
 
-  // ===== Layout Templates (read-only) =====
-  getLayoutTemplates: () => api.get("/admin/layouts"),
-  getLayoutTemplateById: (id) => api.get(`/admin/layouts/${id}`),
+  createEvent: (data) =>
+    api.post("/events", data),
 
-  // ===== Analytics =====
-  getSalesSummary: () => api.get("/analytics/organizer/sales-summary"),
-  getEventOrders: (eventId) =>
-    api.get(`/analytics/organizer/events/${eventId}/orders`),
- // ===== Seat Categories (VENUE based) =====
-getSeatCategoriesByVenue: (venueId) =>
-  api.get(`/api/venues/${venueId}/seat-categories`),
+  updateEvent: (eventId, data) =>
+    api.patch(`/events/${eventId}`, data),
 
-createSeatCategoryForVenue: (venueId, data) =>
-  api.post(`/api/venues/${venueId}/seat-categories`, data),
-// ===== Tickets =====
-createTicketType: (eventId, data) =>
-  api.post(`/api/events/${eventId}/tickets`, data),
+  publishEvent: (eventId) =>
+    api.patch(`/events/${eventId}/publish`),
 
-getTicketTypesByEvent: (eventId) =>
-  api.get(`/api/events/${eventId}/tickets`),
+  deleteEvent: (eventId) =>
+    api.delete(`/events/${eventId}`),
 
-// UPDATE ticket
-updateTicket: (id, data) =>
-  api.put(`/api/tickets/${id}`, data),
-// DELETE ticket
-deleteTicket: (id) =>
-  api.delete(`/api/tickets/${id}`)
+  // ===================== VENUE =====================
+  // ===== VENUE (EVENT OWNED) =====
+  getVenueByEvent: (eventId) =>
+    api.get(`/api/events/${eventId}/venue`),
+
+  createVenueForEvent: (eventId, data) =>
+    api.post(`/api/events/${eventId}/venue`, data),
+
+  updateVenueForEvent: (eventId, data) =>
+    api.patch(`/api/events/${eventId}/venue`, data),
+
+
+  // ===================== SEAT CATEGORIES =====================
+  createSeatCategoryForEvent: (eventId, data) =>
+    api.post(`/api/events/${eventId}/seat-categories`, data),
+
+  getSeatCategoriesByEvent: (eventId) =>
+    api.get(`/api/events/${eventId}/seat-categories`),
+
+  updateSeatCategory: (categoryId, data) =>
+    api.patch(`/api/seat-categories/${categoryId}`, data),
+
+  deleteSeatCategory: (categoryId) =>
+    api.delete(`/api/seat-categories/${categoryId}`),
+
+  // ===================== TICKETS =====================
+  getTicketsByEvent: (eventId) =>
+    api.get(`/api/events/${eventId}/tickets`),
+
+  createTicket: (eventId, data) =>
+    api.post(`/api/events/${eventId}/tickets`, data),
+
+  updateTicket: (ticketId, data) =>
+    api.put(`/api/tickets/${ticketId}`, data),
+
+  deleteTicket: (ticketId) =>
+    api.delete(`/api/tickets/${ticketId}`),
 };

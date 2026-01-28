@@ -1,37 +1,12 @@
 import { Router } from "express";
 import { seatAllocationController } from "./seatAllocationController.js";
-import { authMiddleware } from "../../common/middleware/authMiddleware.js";
-import { requireRole } from "../../common/middleware/roleMiddleware.js";
 
-const seatAllocationRouter = Router();
+const router = Router();
 
-// User buys a ticket (issue + optional auto seat)
-seatAllocationRouter.post(
-  "/events/:eventId/tickets/issue",
-  authMiddleware,
-  requireRole("USER", "ORGANIZER"),
-  (req, res, next) => {
-    req.body.eventId = req.params.eventId;
-    seatAllocationController.issueTicket(req, res, next);
-  }
+// ⚠️ Disabled in MVP
+router.post(
+  "/events/:eventId/seats/allocate",
+  seatAllocationController.allocate
 );
 
-
-// Organizer assigns / changes seat manually
-seatAllocationRouter.post(
-  "/issued-tickets/:id/assign-seat",
-  authMiddleware,
-  requireRole("ORGANIZER"),
-  seatAllocationController.assignSeat
-);
-seatAllocationRouter.get(
-  "/events/:eventId/seats", 
-  authMiddleware, 
-  requireRole("ORGANIZER"),
-  (req, res, next) => {
-    req.params.eventId = req.params.eventId;
-    seatAllocationController.getEventSeats(req, res, next);
-  }
-);
-
-export default seatAllocationRouter;
+export default router;

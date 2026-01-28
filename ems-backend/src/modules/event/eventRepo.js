@@ -6,15 +6,21 @@ export const eventRepo = {
   },
 
   findById(id) {
-    return prisma.event.findUnique({ where: { id } });
-  },
+  return prisma.event.findUnique({
+    where: { id },
+    include: {
+      venue: true,
+    },
+  });
+},
 
-  findByOrganizer(organizerId) {
-    return prisma.event.findMany({
-      where: { organizerId },
-      orderBy: { createdAt: "desc" }
-    });
-  },
+ findByOrganizer(organizerId) {
+  return prisma.event.findMany({
+    where: { organizerId },
+    include: { venue: true },
+    orderBy: { createdAt: "desc" },
+  });
+},
 
   updateById(id, data) {
     return prisma.event.update({

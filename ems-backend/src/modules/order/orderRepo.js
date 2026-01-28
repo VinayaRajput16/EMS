@@ -7,26 +7,33 @@ export const orderRepo = {
     });
   },
 
-  async findById(id) {
-    return prisma.order.findUnique({
-      where: { id },
-      include: {
-        ticket: true,
-        event: true,
+ async findById(id) {
+  return prisma.order.findUnique({
+    where: { id },
+    include: {
+      event: true,
+      issuedTickets: {
+        include: {
+          ticketType: true,
+          seat: true,
+        },
       },
-    });
-  },
+    },
+  });
+},
 
-  async findByUserId(userId) {
-    return prisma.order.findMany({
-      where: { userId },
-      include: {
-        ticket: true,
-        event: { select: { id: true, title: true } },
+ async findByUserId(userId) {
+  return prisma.order.findMany({
+    where: { userId },
+    include: {
+      event: { select: { id: true, title: true } },
+      issuedTickets: {
+        include: { ticketType: true },
       },
-      orderBy: { createdAt: "desc" },
-    });
-  },
+    },
+    orderBy: { createdAt: "desc" },
+  });
+},
 
   async findByEventId(eventId) {
     return prisma.order.findMany({

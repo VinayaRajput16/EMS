@@ -1,27 +1,25 @@
 import { ticketService } from "./ticketService.js";
 
 export const ticketController = {
- async create(req, res, next) {
-  try {
-    const { eventId } = req.params;
-    const organizerId = req.user.id;
+  async create(req, res, next) {
+    try {
+      const { eventId } = req.params;
+      const organizerId = req.user.id;
 
-    const ticket = await ticketService.create(
-      req.body,
-      eventId,
-      organizerId
-    );
+      const ticket = await ticketService.create(
+        eventId,          // ✅ FIRST
+        req.body,         // ✅ SECOND
+        organizerId
+      );
 
-    res.status(201).json({
-      success: true,
-      data: ticket
-    });
-  } catch (e) {
-    next(e);
-  }
-}
-
-  ,
+      res.status(201).json({
+        success: true,
+        data: ticket,
+      });
+    } catch (e) {
+      next(e);
+    }
+  },
 
   async getByEvent(req, res, next) {
     try {
@@ -52,5 +50,5 @@ export const ticketController = {
     } catch (e) {
       next(e);
     }
-  }
+  },
 };

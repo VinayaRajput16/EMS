@@ -5,43 +5,19 @@ import { requireRole } from "../../common/middleware/roleMiddleware.js";
 
 const router = Router();
 
-// ORGANIZER creates real venues
+// Create venue for an event (ONLY ONCE)
 router.post(
-  "/venues",
+  "/events/:eventId/venue",
   authMiddleware,
   requireRole("ORGANIZER"),
-  venueController.create
+  venueController.createForEvent
 );
 
-// ORGANIZER lists their venues
-// ADMIN can read all venues (optional, handled in service if needed)
+// Get venue for an event
 router.get(
-  "/venues",
+  "/events/:eventId/venue",
   authMiddleware,
-  venueController.list
-);
-
-// ORGANIZER gets a venue by id (ownership enforced in service)
-router.get(
-  "/venues/:id",
-  authMiddleware,
-  venueController.getById
-);
-
-// ORGANIZER updates their venue
-router.patch(
-  "/venues/:id",
-  authMiddleware,
-  requireRole("ORGANIZER"),
-  venueController.update
-);
-
-// ORGANIZER deletes their venue (only if not linked to published events)
-router.delete(
-  "/venues/:id",
-  authMiddleware,
-  requireRole("ORGANIZER"),
-  venueController.remove
+  venueController.getByEvent
 );
 
 export default router;

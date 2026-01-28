@@ -56,19 +56,6 @@ export const eventController = {
     }
   },
 
-  async attachVenue(req, res, next) {
-    try {
-      const event = await eventService.attachVenue(
-        req.params.id,
-        req.body.venueId,
-        req.user.id
-      );
-      res.json({ success: true, data: event });
-    } catch (e) {
-      next(e);
-    }
-  },
-
   async getEvent(req, res, next) {
     try {
       const event = await eventService.getEvent(

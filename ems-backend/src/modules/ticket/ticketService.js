@@ -1,93 +1,134 @@
-import { ticketRepo } from "./ticketRepo.js";
 import { eventRepo } from "../event/eventRepo.js";
+import { ticketTypeRepo } from "./ticketTypeRepo.js";
 import AppError from "../../common/errors/AppError.js";
+import prisma from "../../config/db.js";
 
 export const ticketService = {
-  async create(payload, eventId, organizerId) {
-    const { name, price, totalQuantity } = payload;
+  async create(eventId, payload, organizerId) {  // ✅ FIXED ORDER
+    const { name, price, seatCategoryIds = [] } = payload;
 
-    // Validate required fields
-    if (!name || price === undefined || !totalQuantity) {
+    if (!name || price == null) {
       throw new AppError("Missing required fields", 400);
     }
 
-    // Validate event exists
     const event = await eventRepo.findById(eventId);
     if (!event) throw new AppError("Event not found", 404);
-
-    // Verify organizer ownership
     if (event.organizerId !== organizerId) {
       throw new AppError("Unauthorized", 403);
     }
 
-    // Prevent ticket creation on published events
     if (event.status === "PUBLISHED") {
-      throw new AppError("Cannot add tickets to published events", 400);
+      throw new AppError("Cannot add tickets after publish", 400);
     }
 
-    // Validate quantity and price
-    if (totalQuantity <= 0) {
-      throw new AppError("Total quantity must be greater than 0", 400);
-    }
-    if (price < 0) {
-      throw new AppError("Price cannot be negative", 400);
-    }
+    return prisma.$transaction(async (tx) => {
+      // ✅ CREATE TicketType (NOT Ticket)
+      const ticketType = await tx.ticketType.create({
+        data: {
+          eventId,
+          name,
+          price,
+        },
+      });
 
-    return ticketRepo.create({
-      eventId,
-      name,
-      price,
-      totalQuantity,
-      availableQuantity: totalQuantity,
+      // ✅ MAP seat categories (FK-safe)
+      if (seatCategoryIds.length > 0) {
+        await tx.ticketTypeCategory.createMany({
+          data: seatCategoryIds.map((categoryId) => ({
+            ticketTypeId: ticketType.id,
+            seatCategoryId: categoryId,
+          })),
+        });
+      }
+
+      // ✅ Return with relations
+      return tx.ticketType.findUnique({
+        where: { id: ticketType.id },
+        include: {
+          mappings: {
+            include: {
+              seatCategory: true,
+            },
+          },
+        },
+      });
     });
   },
 
   async getEventTickets(eventId) {
-    const event = await eventRepo.findById(eventId);
-    if (!event) throw new AppError("Event not found", 404);
-
-    return ticketRepo.findByEventId(eventId);
+    return ticketTypeRepo.findByEvent(eventId);
   },
 
-  async update(ticketId, payload, organizerId) {
-    const ticket = await ticketRepo.findById(ticketId);
-    if (!ticket) throw new AppError("Ticket not found", 404);
+  async update(ticketTypeId, payload, organizerId) {  // ✅ ADDED
+    const { name, price, seatCategoryIds } = payload;
 
-    // Verify event ownership
-    const event = await eventRepo.findById(ticket.eventId);
-    if (event.organizerId !== organizerId) {
-      throw new AppError("Unauthorized", 403);
-    }
+    const ticketType = await ticketTypeRepo.findById(ticketTypeId);
+    if (!ticketType) throw new AppError("Ticket not found", 404);
 
-    // Prevent updates on published events
-    if (event.status === "PUBLISHED") {
-      throw new AppError("Cannot edit tickets on published events", 400);
-    }
-
-    // Validate if updating quantities
-    if (payload.totalQuantity !== undefined && payload.totalQuantity <= 0) {
-      throw new AppError("Total quantity must be greater than 0", 400);
-    }
-    if (payload.price !== undefined && payload.price < 0) {
-      throw new AppError("Price cannot be negative", 400);
-    }
-
-    return ticketRepo.updateById(ticketId, payload);
-  },
-
-  async delete(ticketId, organizerId) {
-    const ticket = await ticketRepo.findById(ticketId);
-    if (!ticket) throw new AppError("Ticket not found", 404);
-
-    const event = await eventRepo.findById(ticket.eventId);
+    const event = await eventRepo.findById(ticketType.eventId);
     if (event.organizerId !== organizerId) {
       throw new AppError("Unauthorized", 403);
     }
 
     if (event.status === "PUBLISHED") {
-      throw new AppError("Cannot delete tickets from published events", 400);
+      throw new AppError("Cannot update tickets after publish", 400);
     }
 
-    return ticketRepo.deleteById(ticketId);
+    return prisma.$transaction(async (tx) => {
+      // Update basic fields
+      const updated = await tx.ticketType.update({
+        where: { id: ticketTypeId },
+        data: {
+          ...(name && { name }),
+          ...(price != null && { price }),
+        },
+      });
+
+      // Update seat category mappings if provided
+      if (seatCategoryIds) {
+        // Delete existing mappings
+        await tx.ticketTypeCategory.deleteMany({
+          where: { ticketTypeId },
+        });
+
+        // Create new mappings
+        if (seatCategoryIds.length > 0) {
+          await tx.ticketTypeCategory.createMany({
+            data: seatCategoryIds.map((categoryId) => ({
+              ticketTypeId,
+              seatCategoryId: categoryId,
+            })),
+          });
+        }
+      }
+
+      // Return with relations
+      return tx.ticketType.findUnique({
+        where: { id: ticketTypeId },
+        include: {
+          mappings: {
+            include: {
+              seatCategory: true,
+            },
+          },
+        },
+      });
+    });
+  },
+
+  async delete(ticketTypeId, organizerId) {
+    const ticketType = await ticketTypeRepo.findById(ticketTypeId);
+    if (!ticketType) throw new AppError("Ticket not found", 404);
+
+    const event = await eventRepo.findById(ticketType.eventId);
+    if (event.organizerId !== organizerId) {
+      throw new AppError("Unauthorized", 403);
+    }
+
+    if (event.status === "PUBLISHED") {
+      throw new AppError("Cannot delete tickets after publish", 400);
+    }
+
+    return ticketTypeRepo.deleteById(ticketTypeId);
   },
 };

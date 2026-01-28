@@ -7,6 +7,7 @@ export const seatCategoryRepo = {
         venueId,
         name: payload.name,
         priority: payload.priority,
+        maxSeats: payload.maxSeats,
       },
     });
   },
@@ -15,12 +16,6 @@ export const seatCategoryRepo = {
     return prisma.seatCategory.findMany({
       where: { venueId },
       orderBy: { priority: "asc" },
-    });
-  },
-
-  findById(id) {
-    return prisma.seatCategory.findUnique({
-      where: { id },
     });
   },
 };

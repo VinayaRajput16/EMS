@@ -1,9 +1,3 @@
-// This is your Prisma schema file,
-// learn more about it in the docs: https://pris.ly/d/prisma-schema
-
-// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
-// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
-
 generator client {
   provider = "prisma-client-js"
 }
@@ -14,16 +8,16 @@ datasource db {
 }
 
 model User {
-  id            String         @id @default(uuid())
+  id            String   @id @default(uuid())
   name          String
-  email         String         @unique
+  email         String   @unique
   password_hash String
   role          String
-  is_active     Boolean        @default(true)
-  created_at    DateTime       @default(now())
-  updated_at    DateTime       @updatedAt
+  is_active     Boolean  @default(true)
+  created_at    DateTime @default(now())
+  updated_at    DateTime @updatedAt
+
   events        Event[]
-  venues        Venue[]
   orders        Order[]
   issuedTickets IssuedTicket[]
 }
@@ -35,23 +29,20 @@ model Event {
   startDateTime DateTime
   endDateTime   DateTime
 
-  venueLayoutTemplateId String?
-  venueLayoutTemplate   VenueLayoutTemplate? @relation(fields: [venueLayoutTemplateId], references: [id])
-  organizerId           String
+  organizerId   String
+  organizer     User     @relation(fields: [organizerId], references: [id])
 
-  status EventStatus @default(DRAFT)
+  venue         Venue?
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  organizer User @relation(fields: [organizerId], references: [id])
-
+  status        EventStatus @default(DRAFT)
   allocationMode AllocationMode @default(MANUAL)
+
+  createdAt     DateTime @default(now())
+  updatedAt     DateTime @updatedAt
 
   tickets       Ticket[]
   orders        Order[]
   ticketTypes   TicketType[]
-  issuedTickets IssuedTicket[]
 
   @@index([organizerId])
   @@index([status])
@@ -63,36 +54,38 @@ enum EventStatus {
   CANCELLED
 }
 
+enum LayoutType {
+  GALLERY
+  ROW_COLUMN
+  ROUND_TABLE
+  OPEN_CROWD
+}
+
 model Venue {
-  id          String @id @default(uuid())
-  name        String
-  location    String
-  capacity    Int
-  organizerId String
+  id           String   @id @default(uuid())
 
-  layoutTemplateId String? // TEMPORARY
-  layoutConfig     Json? // TEMPORARY
+  eventId      String   @unique
+  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
 
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
+  name         String
+  location     String
 
-  organizer      User                 @relation(fields: [organizerId], references: [id])
-  layoutTemplate VenueLayoutTemplate? @relation(fields: [layoutTemplateId], references: [id])
+  layoutType   LayoutType
+  layoutConfig Json
+  capacity     Int
 
   seatCategories SeatCategory[]
   seats          Seat[]
 
-  @@index([organizerId])
-  @@index([layoutTemplateId])
+  createdAt    DateTime @default(now())
+  updatedAt    DateTime @updatedAt
 }
 
 model Ticket {
   id                String   @id @default(uuid())
   eventId           String
-  name              String // e.g., "Regular", "VIP"
+  name              String
   price             Float    @default(0)
-  totalQuantity     Int
-  availableQuantity Int
   createdAt         DateTime @default(now())
   updatedAt         DateTime @updatedAt
 
@@ -105,7 +98,7 @@ model Ticket {
 model TicketType {
   id        String   @id @default(uuid())
   eventId   String
-  name      String // "VIP", "Regular" etc.
+  name      String
   price     Float
   createdAt DateTime @default(now())
   updatedAt DateTime @updatedAt
@@ -131,20 +124,19 @@ model TicketTypeCategory {
 
 model IssuedTicket {
   id           String   @id @default(uuid())
+
   userId       String
-  eventId      String
   ticketTypeId String
-  seatId       String? // null in manual mode until assigned
+  seatId       String?
+
   createdAt    DateTime @default(now())
   updatedAt    DateTime @updatedAt
 
   user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event      Event      @relation(fields: [eventId], references: [id], onDelete: Cascade)
   ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
   seat       Seat?      @relation(fields: [seatId], references: [id])
 
   @@index([userId])
-  @@index([eventId])
   @@index([ticketTypeId])
   @@index([seatId])
 }
@@ -177,16 +169,19 @@ enum OrderStatus {
 
 model SeatCategory {
   id        String   @id @default(uuid())
+
   venueId   String
+  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
   name      String
   priority  Int
   maxSeats  Int?
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
 
-  venue                Venue                @relation(fields: [venueId], references: [id], onDelete: Cascade)
   seats                Seat[]
   ticketTypeCategories TicketTypeCategory[]
+
+  createdAt DateTime @default(now())
+  updatedAt DateTime @updatedAt
 
   @@index([venueId])
   @@index([venueId, priority])
@@ -194,15 +189,17 @@ model SeatCategory {
 
 model Seat {
   id         String     @id @default(uuid())
+
   venueId    String
-  eventId    String? // assigned at publish
-  orderId    String?
+  venue      Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
+
   categoryId String
+  category   SeatCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
+
+  orderId    String?
   label      String
   status     SeatStatus @default(AVAILABLE)
 
-  venue         Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
-  category      SeatCategory   @relation(fields: [categoryId], references: [id], onDelete: Restrict)
   issuedTickets IssuedTicket[]
 }
 
@@ -214,21 +211,4 @@ enum AllocationMode {
 enum SeatStatus {
   AVAILABLE
   ALLOCATED
-}
-
-model VenueLayoutTemplate {
-  id         String     @id @default(uuid())
-  name       String
-  layoutType LayoutType
-  schema     Json // RULES ONLY (no values)
-  createdAt  DateTime   @default(now())
-  updatedAt  DateTime   @updatedAt
-  venues     Venue[]
-  events     Event[]
-}
-
-enum LayoutType {
-  ROW_COLUMN
-  OPEN_CROWD
-  ROUND_TABLE
 }

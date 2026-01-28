@@ -1,25 +1,27 @@
-import prisma from "../../config/db.js";
 import AppError from "../../common/errors/AppError.js";
-
+import prisma from "../../config/db.js";
 import { eventRepo } from "../event/eventRepo.js";
-import { ticketRepo } from "../ticket/ticketRepo.js";
-import { orderRepo } from "./orderRepo.js";
+import { ticketTypeRepo } from "../ticket/ticketTypeRepo.js";
 import { seatAllocationService } from "../seats/seatAllocationService.js";
+import { orderRepo } from "./orderRepo.js";
 
 export const orderService = {
+  /**
+   * Book tickets for an event
+   */
   async book(payload, userId) {
-    const { eventId, ticketId, quantity } = payload;
+    const { eventId, ticketTypeId, quantity } = payload;
 
-    // 1️⃣ Basic validations
-    if (!eventId || !ticketId || !quantity) {
+    // 1️⃣ Basic validation
+    if (!eventId || !ticketTypeId || !quantity) {
       throw new AppError("Missing required fields", 400);
     }
 
-    if (quantity <= 0) {
-      throw new AppError("Quantity must be greater than 0", 400);
+    if (!Number.isInteger(quantity) || quantity <= 0) {
+      throw new AppError("Quantity must be a positive integer", 400);
     }
 
-    // 2️⃣ Fetch and validate event
+    // 2️⃣ Load event
     const event = await eventRepo.findById(eventId);
     if (!event) throw new AppError("Event not found", 404);
 
@@ -27,93 +29,93 @@ export const orderService = {
       throw new AppError("Only published events can be booked", 400);
     }
 
-    // 3️⃣ Transaction: order + seat allocation + ticket update
-    return await prisma.$transaction(async (tx) => {
-      // 3.1 Validate ticket first (before creating order)
-      const ticket = await tx.ticket.findUnique({
-        where: { id: ticketId },
-      });
+    if (!event.venue) {
+      throw new AppError("Event venue not configured", 400);
+    }
 
-      if (!ticket) {
-        throw new AppError("Ticket not found", 404);
-      }
+    // 3️⃣ Load ticket type
+    const ticketType = await ticketTypeRepo.findById(ticketTypeId);
+    if (!ticketType || ticketType.eventId !== eventId) {
+      throw new AppError("Invalid ticket type", 400);
+    }
 
-      if (ticket.eventId !== eventId) {
-        throw new AppError("Ticket does not belong to this event", 400);
-      }
-
-      if (ticket.availableQuantity < quantity) {
-        throw new AppError("Not enough tickets available", 400);
-      }
-
-      // 3.2 Create order (PENDING)
+    // 4️⃣ Transaction starts
+    return prisma.$transaction(async (tx) => {
+      // 4.1️⃣ Create order
       const order = await tx.order.create({
         data: {
           userId,
           eventId,
-          ticketId,
-          quantity,
           status: "PENDING",
         },
       });
 
-      // 3.3 Allocate seats (only if automated)
+      // 4.2️⃣ Create issued tickets
+      const issuedTickets = [];
+
+      for (let i = 0; i < quantity; i++) {
+        const issuedTicket = await tx.issuedTicket.create({
+          data: {
+            userId,
+            eventId,
+            ticketTypeId,
+            orderId: order.id,
+          },
+        });
+
+        issuedTickets.push(issuedTicket);
+      }
+
+      // 4.3️⃣ Allocate seats ONLY if automated
       if (event.allocationMode === "AUTOMATED") {
         await seatAllocationService.allocateSeatsForOrder({
           tx,
-          eventId,
-          quantity,
-          orderId: order.id,
+          event,
+          ticketTypeId,
+          issuedTickets,
+          orderId: order.id, // ← explicit and correct
         });
       }
 
-      // 3.4 Decrease ticket quantity
-      await tx.ticket.update({
-        where: { id: ticketId },
-        data: {
-          availableQuantity: {
-            decrement: quantity,
-          },
-        },
-      });
-
-      // 3.5 Confirm order
-      return await tx.order.update({
+      // 4.4️⃣ Confirm order
+      return tx.order.update({
         where: { id: order.id },
         data: { status: "CONFIRMED" },
       });
     });
   },
 
+  /**
+   * Get bookings of logged-in user
+   */
   async getMyBookings(userId) {
     return orderRepo.findByUserId(userId);
   },
 
+  /**
+   * Get single booking details
+   */
   async getBookingDetails(orderId, userId) {
     const order = await orderRepo.findById(orderId);
     if (!order) throw new AppError("Order not found", 404);
-
     if (order.userId !== userId) {
       throw new AppError("Unauthorized", 403);
     }
-
     return order;
   },
 
+  /**
+   * Cancel booking
+   */
   async cancelBooking(orderId, userId) {
     const order = await orderRepo.findById(orderId);
     if (!order) throw new AppError("Order not found", 404);
-
     if (order.userId !== userId) {
       throw new AppError("Unauthorized", 403);
     }
 
-    if (order.status === "CANCELLED") {
-      throw new AppError("Order already cancelled", 400);
-    }
-
-    return await prisma.$transaction(async (tx) => {
-      // 1️⃣ Release seats
+    return prisma.$transaction(async (tx) => {
+      // 1️⃣ Release seats linked to this order
       await tx.seat.updateMany({
         where: { orderId },
         data: {
@@ -122,18 +124,13 @@ export const orderService = {
         },
       });
 
-      // 2️⃣ Restore ticket quantity
-      await tx.ticket.update({
-        where: { id: order.ticketId },
-        data: {
-          availableQuantity: {
-            increment: order.quantity,
-          },
-        },
+      // 2️⃣ Remove issued tickets
+      await tx.issuedTicket.deleteMany({
+        where: { orderId },
       });
 
       // 3️⃣ Cancel order
-      return await tx.order.update({
+      return tx.order.update({
         where: { id: orderId },
         data: { status: "CANCELLED" },
       });

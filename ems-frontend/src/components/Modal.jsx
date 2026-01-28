@@ -1,0 +1,100 @@
+import React from 'react';
+
+/**
+ * Modal Component - Overlay dialog with backdrop
+ * 
+ * @param {boolean} isOpen - Control modal visibility
+ * @param {function} onClose - Function to call when closing
+ * @param {string} title - Modal title
+ * @param {string} size - 'sm' | 'md' | 'lg' | 'xl' | 'full'
+ * @param {boolean} showCloseButton - Show X button in header
+ * @param {ReactNode} footer - Optional footer content
+ */
+const Modal = ({ 
+  isOpen,
+  onClose,
+  children,
+  title,
+  size = 'md',
+  showCloseButton = true,
+  footer = null,
+  className = '',
+  ...props 
+}) => {
+  if (!isOpen) return null;
+  
+  const sizes = {
+    sm: 'max-w-md',
+    md: 'max-w-lg',
+    lg: 'max-w-2xl',
+    xl: 'max-w-4xl',
+    full: 'max-w-7xl'
+  };
+  
+  return (
+    <div className="fixed inset-0 z-50 overflow-y-auto">
+      {/* Backdrop */}
+      <div 
+        className="fixed inset-0 bg-slate-900/50 backdrop-blur-sm transition-opacity duration-300"
+        onClick={onClose}
+      ></div>
+      
+      {/* Modal */}
+      <div className="flex min-h-full items-center justify-center p-4">
+        <div 
+          className={`relative bg-white rounded-2xl shadow-2xl w-full ${sizes[size]} transform transition-all duration-300 ${className}`}
+          style={{
+            animation: 'modalSlideIn 0.3s ease-out'
+          }}
+          {...props}
+        >
+          {/* Header */}
+          {(title || showCloseButton) && (
+            <div className="flex items-center justify-between px-6 py-4 border-b border-slate-200">
+              {title && (
+                <h3 className="text-xl font-semibold text-slate-900">{title}</h3>
+              )}
+              {showCloseButton && (
+                <button
+                  onClick={onClose}
+                  className="text-slate-400 hover:text-slate-600 transition-colors p-1 hover:bg-slate-100 rounded-lg"
+                >
+                  <svg className="w-5 h-5" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M6 18L18 6M6 6l12 12" />
+                  </svg>
+                </button>
+              )}
+            </div>
+          )}
+          
+          {/* Content */}
+          <div className="px-6 py-5">
+            {children}
+          </div>
+          
+          {/* Footer */}
+          {footer && (
+            <div className="px-6 py-4 border-t border-slate-200 bg-slate-50/50 rounded-b-2xl">
+              {footer}
+            </div>
+          )}
+        </div>
+      </div>
+      
+      <style>{`
+        @keyframes modalSlideIn {
+          from {
+            opacity: 0;
+            transform: scale(0.95) translateY(-10px);
+          }
+          to {
+            opacity: 1;
+            transform: scale(1) translateY(0);
+          }
+        }
+      `}</style>
+    </div>
+  );
+};
+
+export default Modal;

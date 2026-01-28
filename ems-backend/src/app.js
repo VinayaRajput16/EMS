@@ -9,9 +9,7 @@ import orderRouter from "./modules/order/orderRoutes.js";
 import analyticsRouter from "./modules/analytics/analyticsRoutes.js";
 import seatAllocationRouter from "./modules/seats/seatAllocationRoutes.js";
 import venueRouter from "./modules/venue/venueRoutes.js";
-import layoutRouter from "./modules/layout/layoutRoutes.js";
 import seatCategoryRouter from "./modules/SeatCategory/seatCategoryRoutes.js";
-
 
 const app = express();
 
@@ -30,7 +28,6 @@ app.use("/api", orderRouter);
 app.use("/api", seatAllocationRouter);
 app.use("/api", analyticsRouter);
 app.use("/api", venueRouter);
-app.use("/admin", layoutRouter);
 app.use("/api", seatCategoryRouter);
 
 

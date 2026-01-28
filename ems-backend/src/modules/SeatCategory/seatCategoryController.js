@@ -4,8 +4,9 @@ export const seatCategoryController = {
   async create(req, res, next) {
     try {
       const category = await seatCategoryService.create(
-        req.params.venueId,
-        req.body
+        req.params.eventId,
+        req.body,
+        req.user.id
       );
       res.status(201).json({ success: true, data: category });
     } catch (e) {
@@ -15,10 +16,13 @@ export const seatCategoryController = {
 
   async list(req, res, next) {
     try {
-      const categories = await seatCategoryService.list(req.params.venueId);
+      const categories = await seatCategoryService.list(
+        req.params.eventId,
+        req.user.id
+      );
       res.json({ success: true, data: categories });
     } catch (e) {
       next(e);
     }
-  }
+  },
 };

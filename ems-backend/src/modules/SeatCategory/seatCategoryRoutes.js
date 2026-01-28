@@ -6,14 +6,14 @@ import { requireRole } from "../../common/middleware/roleMiddleware.js";
 const router = Router();
 
 router.post(
-  "/venues/:venueId/seat-categories",
+  "/events/:eventId/seat-categories",
   authMiddleware,
   requireRole("ORGANIZER"),
   seatCategoryController.create
 );
 
 router.get(
-  "/venues/:venueId/seat-categories",
+  "/events/:eventId/seat-categories",
   authMiddleware,
   requireRole("ORGANIZER"),
   seatCategoryController.list

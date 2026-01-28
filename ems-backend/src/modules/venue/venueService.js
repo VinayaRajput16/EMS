@@ -1,80 +1,76 @@
 import AppError from "../../common/errors/AppError.js";
 import { venueRepo } from "./venueRepo.js";
-import { validateLayoutConfig } from "../../common/utils/validateLayoutConfig.js";
-import { layoutService } from "../layout/layoutService.js";
-export const venueService = {
-  async create(payload, organizerId) {
-    const { name, location, capacity, layoutTemplateId, layoutConfig } = payload;
+import { eventRepo } from "../event/eventRepo.js";
+import { validateLayoutConfig } from "../../config/validateLayoutConfig.js";
 
-    if (!name || !location || !layoutTemplateId || !layoutConfig) {
+export const venueService = {
+  async createForEvent(eventId, payload, organizerId) {
+    const event = await eventRepo.findById(eventId);
+
+    if (!event) {
+      throw new AppError("Event not found", 404);
+    }
+
+    if (event.organizerId !== organizerId) {
+      throw new AppError("Unauthorized", 403);
+    }
+
+    if (event.venue) {
+      throw new AppError(
+        "Venue already exists for this event",
+        400
+      );
+    }
+
+    const { name, location, layoutType, layoutConfig } = payload;
+
+    if (!name || !location || !layoutType || !layoutConfig) {
       throw new AppError("Missing required fields", 400);
     }
 
-    if (capacity <= 0) {
-      throw new AppError("Capacity must be greater than 0", 400);
+    validateLayoutConfig(layoutType, layoutConfig);
+
+    let capacity;
+    switch (layoutType) {
+      case "ROW_COLUMN":
+      case "GALLERY":
+        capacity = layoutConfig.rows * layoutConfig.columns;
+        break;
+
+      case "ROUND_TABLE":
+        capacity = layoutConfig.tables * layoutConfig.seatsPerTable;
+        break;
+
+      case "OPEN_CROWD":
+        capacity = layoutConfig.capacity;
+        break;
     }
 
-    const template = await layoutService.get(layoutTemplateId);
-    if (!template) {
-      throw new AppError("Venue not found", 404);
+    if (!Number.isInteger(capacity) || capacity <= 0) {
+      throw new AppError("Invalid venue capacity", 400);
     }
-
-    validateLayoutConfig(template.schema, layoutConfig);
 
     return venueRepo.create({
+      eventId,
       name,
       location,
+      layoutType,
+      layoutConfig,
       capacity,
-      organizerId,
-      layoutTemplateId,
-      layoutConfig
     });
   },
 
-  async getAll() {
-    return venueRepo.findAll();
-  },
+  async getByEvent(eventId, organizerId) {
+    const event = await eventRepo.findById(eventId);
 
-  async getById(id) {
-    const venue = await venueRepo.findById(id);
-    if (!venue) throw new AppError("Layout not found", 404);
-    return venue;
-  },
-
-  async update(id, payload) {
-    const venue = await venueRepo.findById(id);
-    if (!venue) throw new AppError("Layout not found", 404);
-
-    const updateData = {};
-    if (payload.layoutConfig !== undefined) {
-      throw new AppError(
-        "Layout configuration cannot be updated after venue creation",
-        400
-      );
-    }
-    if (payload.name !== undefined) updateData.name = payload.name;
-    if (payload.capacity !== undefined) {
-      if (payload.capacity <= 0) {
-        throw new AppError("Capacity must be greater than 0", 400);
-      }
-      updateData.capacity = payload.capacity;
+    if (!event) {
+      throw new AppError("Event not found", 404);
     }
 
-    return venueRepo.updateById(id, updateData);
-  },
-
-  async remove(id) {
-    const venue = await venueRepo.findById(id);
-    if (!venue) throw new AppError("Layout not found", 404);
-
-    const linkedPublished = await venueRepo.countPublishedEventsUsingVenue(id);
-    if (linkedPublished > 0) {
-      throw new AppError(
-        "Cannot delete layout linked to published events",
-        400
-      );
+    if (event.organizerId !== organizerId) {
+      throw new AppError("Unauthorized", 403);
     }
 
-    await venueRepo.deleteById(id);
+    return venueRepo.findByEventId(eventId);
   },
 };

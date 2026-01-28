@@ -1,6 +1,7 @@
 import { PrismaClient } from '@prisma/client';
 
 const prisma = new PrismaClient();
+console.log("🚨 SERVER DATABASE_URL:", process.env.DATABASE_URL);
 
 export async function connectDB(){
     try {

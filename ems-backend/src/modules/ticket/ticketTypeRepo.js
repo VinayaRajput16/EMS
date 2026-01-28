@@ -1,17 +1,7 @@
-import  prisma  from "../../config/db.js";
+import prisma from "../../config/db.js";
 
 export const ticketTypeRepo = {
-  create(eventId, payload) {
-    return prisma.ticketType.create({
-      data: {
-        eventId,
-        name: payload.name,
-        price: payload.price,
-      },
-    });
-  },
-
-  findById(id) {
+  async findById(id) {
     return prisma.ticketType.findUnique({
       where: { id },
       include: {
@@ -24,13 +14,36 @@ export const ticketTypeRepo = {
     });
   },
 
-  attachCategories(ticketTypeId, categoryIds) {
-    return prisma.ticketTypeCategory.createMany({
-      data: categoryIds.map((categoryId) => ({
-        ticketTypeId,
-        seatCategoryId: categoryId,
-      })),
-      skipDuplicates: true,
+  async findByEvent(eventId) {
+    return prisma.ticketType.findMany({
+      where: { eventId },
+      include: {
+        mappings: {
+          include: {
+            seatCategory: true,
+          },
+        },
+      },
+      orderBy: { createdAt: "asc" },
+    });
+  },
+
+  async updateById(id, payload) {
+    return prisma.ticketType.update({
+      where: { id },
+      data: payload,
+    });
+  },
+
+  async deleteById(id) {
+    return prisma.ticketType.delete({
+      where: { id },
+    });
+  },
+
+  async deleteByEventId(eventId) {
+    return prisma.ticketType.deleteMany({
+      where: { eventId },
     });
   },
 };
