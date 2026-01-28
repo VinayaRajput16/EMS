@@ -375,7 +375,6 @@ Event Management System
 ## 🙏 Acknowledgments
 
 Special thanks to:
-- Academic supervisors and mentors
 - Open-source community for excellent tools and libraries
 
 ---
