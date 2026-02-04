@@ -22,14 +22,24 @@ import Home from "./pages/Home.jsx";
 import OrganizerEventCreate from "./pages/organizer/Events/Create.jsx";
 import OrganizerEventPublish from "./pages/organizer/Events/Publish.jsx";
 import OrganizerVenueView from "./pages/organizer/Venues/View.jsx";
+import Register from "./pages/Register.jsx";
+import UserLayout from "./layouts/UserLayout.jsx";
+import UserDashboard from "./pages/user/Dashboard.jsx";
+import BrowseEvents from "./pages/user/Events/BrowseEvents.jsx";
+import EventDetails from "./pages/user/Events/EventDetails.jsx";
+import MyBookings from "./pages/user/Bookings/MyBookings.jsx";
+import BookingDetails from "./pages/user/Bookings/BookingDetails.jsx";
+import SeatManagement from "./pages/organizer/Events/SeatManagement.jsx"; // ← ADD THIS
 
 export default function App() {
   return (
     <BrowserRouter>
       <Routes>
         <Route path="/" element={<Home />} />
+        <Route path="/register" element={<Register />} />
         <Route path="/admin/login" element={<AdminLogin />} />
 
+        {/* ========== ADMIN ROUTES ========== */}
         <Route
           path="/admin"
           element={
@@ -48,9 +58,23 @@ export default function App() {
           <Route path="analytics" element={<AdminAnalytics />} />
         </Route>
 
-        
+        {/* ========== USER ROUTES (Protected) ========== */}
+        <Route path="/user/:userId" element={<UserLayout />}>
+          {/* Dashboard */}
+          <Route path="dashboard" element={<UserDashboard />} />
+
+          {/* Events */}
+          <Route path="events" element={<BrowseEvents />} />
+          <Route path="events/:eventId" element={<EventDetails />} />
+
+          {/* Bookings */}
+          <Route path="bookings" element={<MyBookings />} />
+          <Route path="bookings/:bookingId" element={<BookingDetails />} />
+        </Route>
+
+        {/* ========== ORGANIZER ROUTES ========== */}
         <Route path="/organizer/login" element={<OrganizerLogin />} />
-        {/* Organizer Routes */}
+        
         <Route path="/organizer" element={<OrganizerLayout />}>
           <Route index element={<OrganizerDashboard />} />
           <Route path="dashboard" element={<OrganizerDashboard />} />
@@ -59,16 +83,25 @@ export default function App() {
             <Route index element={<OrganizerEventList />} />
             <Route path="create" element={<OrganizerEventCreate />} />
             <Route path=":id" element={<OrganizerEventView />} />
+            
+            {/* Venue Routes */}
             <Route path=":id/venue/create" element={<OrganizerVenueCreate />} />
             <Route path=":id/venue/view" element={<OrganizerVenueView />} />
+            
+            {/* Seat Categories */}
             <Route path=":id/seat-categories" element={<SeatCategoryList />} />
             <Route path=":id/seat-categories/create" element={<SeatCategoryCreate />} />
+            
+            {/* Tickets */}
             <Route path=":id/tickets" element={<OrganizerTicketManage />} />
+            
+            {/* Seat Management - NEW ROUTE */}
+            <Route path=":id/seats" element={<SeatManagement />} />
+            
+            {/* Publish */}
             <Route path=":id/publish" element={<OrganizerEventPublish />} />
           </Route>
         </Route>
-
-
       </Routes>
     </BrowserRouter>
   );

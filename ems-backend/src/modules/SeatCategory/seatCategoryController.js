@@ -1,5 +1,6 @@
 import { seatCategoryService } from "./seatCategoryService.js";
 
+
 export const seatCategoryController = {
   async create(req, res, next) {
     try {

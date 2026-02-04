@@ -1,4 +1,6 @@
 // src/pages/Home.jsx
+import { Link } from "react-router-dom"; // ✅ Add Link import
+
 export default function Home() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-950 text-white">
@@ -36,10 +38,10 @@ export default function Home() {
               seamless event experiences in Aurangabad and beyond.
             </p>
 
-            {/* Primary CTA */}
+            {/* Primary CTA - UPDATED WITH REGISTER BUTTON */}
             <div className="flex flex-col lg:flex-row gap-6 justify-center items-center mb-20">
-              <a
-                href="/events"
+              <Link
+                to="/events"
                 className="group relative px-12 py-7 bg-gradient-to-r from-emerald-600 to-emerald-700 text-xl font-bold text-white rounded-3xl shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-1 transition-all duration-500 overflow-hidden focus:outline-none focus:ring-4 focus:ring-emerald-400/50 focus:ring-offset-2 focus:ring-offset-slate-950"
               >
                 <span className="absolute inset-0 bg-gradient-to-r from-emerald-400/30 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"></span>
@@ -49,13 +51,28 @@ export default function Home() {
                   </svg>
                   Explore Events
                 </span>
-              </a>
-              <a
-                href="/organizer/login"
+              </Link>
+              
+              {/* ✅ NEW REGISTER BUTTON */}
+              <Link
+                to="/register"
+                className="group relative px-12 py-7 bg-gradient-to-r from-white to-slate-100 text-xl font-black text-slate-900 rounded-3xl shadow-2xl hover:shadow-white/50 hover:-translate-y-1 hover:shadow-[0_25px_50px_-12px_rgba(255,255,255,0.25)] transition-all duration-500 overflow-hidden focus:outline-none focus:ring-4 focus:ring-white/50 focus:ring-offset-2 focus:ring-offset-slate-950 hover:bg-white/90"
+              >
+                <span className="absolute inset-0 bg-gradient-to-r from-emerald-400/20 via-transparent to-white/20 -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"></span>
+                <span className="relative flex items-center">
+                  <svg className="w-7 h-7 mr-3 opacity-90 group-hover:opacity-100 transition-opacity" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M18 9v3m0 0v3m0-3h3m-3 0h-3m-2-5a4 4 0 11-8 0 4 4 0 018 0zM3 20a6 6 0 0112 0v1H3v-1z" />
+                  </svg>
+                  Sign Up Free
+                </span>
+              </Link>
+
+              <Link
+                to="/organizer/login"
                 className="px-12 py-7 border-4 border-rose-600 text-xl font-bold text-rose-400 rounded-3xl hover:bg-rose-600 hover:text-white hover:border-rose-700 transition-all duration-300 shadow-xl hover:shadow-rose-500/25 hover:-translate-y-1 focus:outline-none focus:ring-4 focus:ring-rose-500/50 focus:ring-offset-2 focus:ring-offset-slate-950"
               >
-                For Organizers
-              </a>
+                Login
+              </Link>
             </div>
 
             {/* Trust Indicators */}
@@ -79,15 +96,15 @@ export default function Home() {
 
       <style jsx>{`
         @keyframes float-slow {
-          0%, 100% { transform: translateY(0px); }
-          50% { transform: translateY(-8px); }
+         0%, 100% { transform: translateY(0px); }
+         50% { transform: translateY(-8px); }
         }
         
         .bg-grid-slate {
-          background-image: 
-            linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
-            linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
-          background-size: 40px 40px;
+        background-image: 
+          linear-gradient(rgba(255,255,255,0.08) 1px, transparent 1px),
+          linear-gradient(90deg, rgba(255,255,255,0.08) 1px, transparent 1px);
+        background-size: 40px 40px;
         }
       `}</style>
     </div>

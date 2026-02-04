@@ -9,8 +9,10 @@ export const orderService = {
   /**
    * Book tickets for an event
    */
+  // REPLACE YOUR orderService.book() function with this updated version
+
   async book(payload, userId) {
-    const { eventId, ticketTypeId, quantity } = payload;
+    const { eventId, ticketTypeId, quantity, seatIds = [] } = payload;
 
     // 1️⃣ Basic validation
     if (!eventId || !ticketTypeId || !quantity) {
@@ -39,9 +41,19 @@ export const orderService = {
       throw new AppError("Invalid ticket type", 400);
     }
 
-    // 4️⃣ Transaction starts
+    // 4️⃣ For MANUAL mode, validate seat selection
+    if (event.allocationMode === "MANUAL") {
+      if (!seatIds || seatIds.length !== quantity) {
+        throw new AppError(
+          `You must select exactly ${quantity} seat(s)`,
+          400
+        );
+      }
+    }
+
+    // 5️⃣ Transaction starts
     return prisma.$transaction(async (tx) => {
-      // 4.1️⃣ Create order
+      // 5.1️⃣ Create order
       const order = await tx.order.create({
         data: {
           userId,
@@ -50,7 +62,7 @@ export const orderService = {
         },
       });
 
-      // 4.2️⃣ Create issued tickets
+      // 5.2️⃣ Create issued tickets
       const issuedTickets = [];
 
       for (let i = 0; i < quantity; i++) {
@@ -66,18 +78,56 @@ export const orderService = {
         issuedTickets.push(issuedTicket);
       }
 
-      // 4.3️⃣ Allocate seats ONLY if automated
+      // 5.3️⃣ Allocate seats based on mode
       if (event.allocationMode === "AUTOMATED") {
+        // Automatic seat allocation
         await seatAllocationService.allocateSeatsForOrder({
           tx,
           event,
           ticketTypeId,
           issuedTickets,
-          orderId: order.id, // ← explicit and correct
+          orderId: order.id,
         });
+      } else {
+        // Manual seat allocation - user selected seats
+        for (let i = 0; i < quantity; i++) {
+          const seatId = seatIds[i];
+          const issuedTicket = issuedTickets[i];
+
+          // Verify seat is available
+          const seat = await tx.seat.findUnique({
+            where: { id: seatId },
+          });
+
+          if (!seat) {
+            throw new AppError(`Seat not found: ${seatId}`, 400);
+          }
+
+          if (seat.status !== "AVAILABLE") {
+            throw new AppError(`Seat ${seat.label} is not available`, 400);
+          }
+
+          if (seat.venueId !== event.venue.id) {
+            throw new AppError(`Seat ${seat.label} is not in this venue`, 400);
+          }
+
+          // Allocate seat to issued ticket
+          await tx.seat.update({
+            where: { id: seatId },
+            data: {
+              status: "ALLOCATED",
+              orderId: order.id,
+            },
+          });
+
+          await tx.issuedTicket.update({
+            where: { id: issuedTicket.id },
+            data: { seatId },
+          });
+        }
       }
 
-      // 4.4️⃣ Confirm order
+      // 5.4️⃣ Confirm order
       return tx.order.update({
         where: { id: order.id },
         data: { status: "CONFIRMED" },

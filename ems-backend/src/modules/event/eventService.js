@@ -130,4 +130,27 @@ export const eventService = {
 
     return event;
   },
+ /**
+   * Get all published events (no auth needed)
+   */
+  async getAllPublished() {
+    return eventRepo.findAllPublished();
+  },
+
+  /**
+   * Get public event details with ticket types (no auth needed)
+   */
+  async getPublicEventDetails(eventId) {
+    const event = await eventRepo.findByIdPublic(eventId);
+
+    if (!event) {
+      throw new AppError("Event not found", 404);
+    }
+
+    if (event.status !== "PUBLISHED") {
+      throw new AppError("Event is not available for booking", 400);
+    }
+
+    return event;
+  },
 };

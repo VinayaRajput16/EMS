@@ -62,4 +62,9 @@ export const organizerApi = {
 
   deleteTicket: (ticketId) =>
     api.delete(`/api/tickets/${ticketId}`),
+
+  // ===================== SEAT MANAGEMENT =====================
+  getEventSeats: (eventId) =>
+    api.get(`/api/events/${eventId}/seats`),
 };
+

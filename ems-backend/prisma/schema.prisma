@@ -8,44 +8,157 @@ datasource db {
 }
 
 model User {
-  id            String   @id @default(uuid())
+  id            String         @id @default(uuid())
   name          String
-  email         String   @unique
+  email         String         @unique
   password_hash String
   role          String
-  is_active     Boolean  @default(true)
-  created_at    DateTime @default(now())
-  updated_at    DateTime @updatedAt
-
+  is_active     Boolean        @default(true)
+  created_at    DateTime       @default(now())
+  updated_at    DateTime       @updatedAt
   events        Event[]
-  orders        Order[]
   issuedTickets IssuedTicket[]
+  orders        Order[]
 }
 
 model Event {
-  id            String   @id @default(uuid())
-  title         String
-  description   String?
-  startDateTime DateTime
-  endDateTime   DateTime
-
-  organizerId   String
-  organizer     User     @relation(fields: [organizerId], references: [id])
-
-  venue         Venue?
-
-  status        EventStatus @default(DRAFT)
+  id             String         @id @default(uuid())
+  title          String
+  description    String?
+  startDateTime  DateTime
+  endDateTime    DateTime
+  organizerId    String
+  status         EventStatus    @default(DRAFT)
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
   allocationMode AllocationMode @default(MANUAL)
-
-  createdAt     DateTime @default(now())
-  updatedAt     DateTime @updatedAt
-
-  tickets       Ticket[]
-  orders        Order[]
-  ticketTypes   TicketType[]
+  organizer      User           @relation(fields: [organizerId], references: [id])
+  issuedTickets  IssuedTicket[]
+  orders         Order[]
+  Ticket         Ticket[]
+  ticketTypes    TicketType[]
+  venue          Venue?
 
   @@index([organizerId])
   @@index([status])
+}
+
+model Venue {
+  id             String         @id @default(uuid())
+  name           String
+  location       String
+  capacity       Int
+  createdAt      DateTime       @default(now())
+  updatedAt      DateTime       @updatedAt
+  layoutConfig   Json
+  layoutType     LayoutType
+  eventId        String         @unique
+  seats          Seat[]
+  seatCategories SeatCategory[]
+  event          Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+}
+
+model TicketType {
+  id            String               @id @default(uuid())
+  eventId       String
+  name          String
+  price         Float
+  createdAt     DateTime             @default(now())
+  updatedAt     DateTime             @updatedAt
+  issuedTickets IssuedTicket[]
+  event         Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  mappings      TicketTypeCategory[]
+
+  @@index([eventId])
+}
+
+model TicketTypeCategory {
+  id             String       @id @default(uuid())
+  ticketTypeId   String
+  seatCategoryId String
+  seatCategory   SeatCategory @relation(fields: [seatCategoryId], references: [id], onDelete: Cascade)
+  ticketType     TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
+
+  @@unique([ticketTypeId, seatCategoryId])
+  @@index([seatCategoryId])
+}
+
+model IssuedTicket {
+  id           String     @id @default(uuid())
+  userId       String
+  ticketTypeId String
+  seatId       String?
+  createdAt    DateTime   @default(now())
+  updatedAt    DateTime   @updatedAt
+  eventId      String?
+  orderId      String?
+  event        Event?     @relation(fields: [eventId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  order        Order?     @relation(fields: [orderId], references: [id], onDelete: Cascade, onUpdate: NoAction)
+  seat         Seat?      @relation(fields: [seatId], references: [id])
+  ticketType   TicketType @relation(fields: [ticketTypeId], references: [id])
+  user         User       @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([ticketTypeId])
+  @@index([orderId])
+  @@index([seatId])
+}
+
+model Order {
+  id            String         @id @default(uuid())
+  userId        String
+  eventId       String
+  status        OrderStatus    @default(PENDING)
+  createdAt     DateTime       @default(now())
+  updatedAt     DateTime       @updatedAt
+  issuedTickets IssuedTicket[]
+  event         Event          @relation(fields: [eventId], references: [id], onDelete: Cascade)
+  user          User           @relation(fields: [userId], references: [id], onDelete: Cascade)
+
+  @@index([userId])
+  @@index([eventId])
+  @@index([status])
+}
+
+model SeatCategory {
+  id                   String               @id @default(uuid())
+  name                 String
+  priority             Int
+  createdAt            DateTime             @default(now())
+  updatedAt            DateTime             @updatedAt
+  venueId              String
+  maxSeats             Int?
+  seats                Seat[]
+  venue                Venue                @relation(fields: [venueId], references: [id], onDelete: Cascade)
+  ticketTypeCategories TicketTypeCategory[]
+
+  @@index([venueId])
+  @@index([venueId, priority])
+}
+
+model Seat {
+  id            String         @id @default(uuid())
+  categoryId    String
+  label         String
+  status        SeatStatus     @default(AVAILABLE)
+  orderId       String?
+  venueId       String
+  issuedTickets IssuedTicket[]
+  category      SeatCategory   @relation(fields: [categoryId], references: [id])
+  venue         Venue          @relation(fields: [venueId], references: [id], onDelete: Cascade)
+}
+
+model Ticket {
+  id        String   @id
+  eventId   String
+  name      String
+  price     Float    @default(0)
+  createdAt DateTime @default(now())
+  updatedAt DateTime
+  Event     Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
+
+  @@index([eventId])
 }
 
 enum EventStatus {
@@ -55,152 +168,16 @@ enum EventStatus {
 }
 
 enum LayoutType {
-  GALLERY
   ROW_COLUMN
-  ROUND_TABLE
   OPEN_CROWD
-}
-
-model Venue {
-  id           String   @id @default(uuid())
-
-  eventId      String   @unique
-  event        Event    @relation(fields: [eventId], references: [id], onDelete: Cascade)
-
-  name         String
-  location     String
-
-  layoutType   LayoutType
-  layoutConfig Json
-  capacity     Int
-
-  seatCategories SeatCategory[]
-  seats          Seat[]
-
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-}
-
-model Ticket {
-  id                String   @id @default(uuid())
-  eventId           String
-  name              String
-  price             Float    @default(0)
-  createdAt         DateTime @default(now())
-  updatedAt         DateTime @updatedAt
-
-  event  Event   @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  orders Order[]
-
-  @@index([eventId])
-}
-
-model TicketType {
-  id        String   @id @default(uuid())
-  eventId   String
-  name      String
-  price     Float
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  event         Event                @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  mappings      TicketTypeCategory[]
-  issuedTickets IssuedTicket[]
-
-  @@index([eventId])
-}
-
-model TicketTypeCategory {
-  id             String @id @default(uuid())
-  ticketTypeId   String
-  seatCategoryId String
-
-  ticketType   TicketType   @relation(fields: [ticketTypeId], references: [id], onDelete: Cascade)
-  seatCategory SeatCategory @relation(fields: [seatCategoryId], references: [id], onDelete: Cascade)
-
-  @@unique([ticketTypeId, seatCategoryId])
-  @@index([seatCategoryId])
-}
-
-model IssuedTicket {
-  id           String   @id @default(uuid())
-
-  userId       String
-  ticketTypeId String
-  seatId       String?
-
-  createdAt    DateTime @default(now())
-  updatedAt    DateTime @updatedAt
-
-  user       User       @relation(fields: [userId], references: [id], onDelete: Cascade)
-  ticketType TicketType @relation(fields: [ticketTypeId], references: [id], onDelete: Restrict)
-  seat       Seat?      @relation(fields: [seatId], references: [id])
-
-  @@index([userId])
-  @@index([ticketTypeId])
-  @@index([seatId])
-}
-
-model Order {
-  id        String      @id @default(uuid())
-  userId    String
-  eventId   String
-  ticketId  String
-  quantity  Int
-  status    OrderStatus @default(PENDING)
-  createdAt DateTime    @default(now())
-  updatedAt DateTime    @updatedAt
-
-  user   User   @relation(fields: [userId], references: [id], onDelete: Cascade)
-  event  Event  @relation(fields: [eventId], references: [id], onDelete: Cascade)
-  ticket Ticket @relation(fields: [ticketId], references: [id], onDelete: Cascade)
-
-  @@index([userId])
-  @@index([eventId])
-  @@index([ticketId])
-  @@index([status])
+  ROUND_TABLE
+  GALLERY
 }
 
 enum OrderStatus {
   PENDING
   CONFIRMED
   CANCELLED
-}
-
-model SeatCategory {
-  id        String   @id @default(uuid())
-
-  venueId   String
-  venue     Venue    @relation(fields: [venueId], references: [id], onDelete: Cascade)
-
-  name      String
-  priority  Int
-  maxSeats  Int?
-
-  seats                Seat[]
-  ticketTypeCategories TicketTypeCategory[]
-
-  createdAt DateTime @default(now())
-  updatedAt DateTime @updatedAt
-
-  @@index([venueId])
-  @@index([venueId, priority])
-}
-
-model Seat {
-  id         String     @id @default(uuid())
-
-  venueId    String
-  venue      Venue      @relation(fields: [venueId], references: [id], onDelete: Cascade)
-
-  categoryId String
-  category   SeatCategory @relation(fields: [categoryId], references: [id], onDelete: Restrict)
-
-  orderId    String?
-  label      String
-  status     SeatStatus @default(AVAILABLE)
-
-  issuedTickets IssuedTicket[]
 }
 
 enum AllocationMode {

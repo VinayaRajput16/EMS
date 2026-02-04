@@ -67,4 +67,28 @@ export const eventController = {
       next(e);
     }
   },
+ 
+  /**
+   * Get all published events (public - no auth required)
+   */
+  async getAllPublished(req, res, next) {
+    try {
+      const events = await eventService.getAllPublished();
+      res.json({ success: true, data: events });
+    } catch (e) {
+      next(e);
+    }
+  },
+
+  /**
+   * Get public event details with ticket types (public - no auth required)
+   */
+  async getPublicEventDetails(req, res, next) {
+    try {
+      const event = await eventService.getPublicEventDetails(req.params.id);
+      res.json({ success: true, data: event });
+    } catch (e) {
+      next(e);
+    }
+  },
 };
