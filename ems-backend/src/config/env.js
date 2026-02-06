@@ -3,11 +3,11 @@ import dotenv from "dotenv";
 dotenv.config();
 
 const requiredVars = [
-  "NODE_ENV",
   "PORT",
   "DATABASE_URL",
   "JWT_ACCESS_SECRET",
-  "JWT_REFRESH_SECRET"
+  "JWT_REFRESH_SECRET",
+  "FRONTEND_URL"
 ];
 
 for (const key of requiredVars) {
@@ -21,7 +21,8 @@ export const env = {
   port: Number(process.env.PORT),
   databaseUrl: process.env.DATABASE_URL,
   JWT_ACCESS_SECRET: process.env.JWT_ACCESS_SECRET,
-  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET
+  JWT_REFRESH_SECRET: process.env.JWT_REFRESH_SECRET,
+  FRONTEND_URL: process.env.FRONTEND_URL
 };
 
 

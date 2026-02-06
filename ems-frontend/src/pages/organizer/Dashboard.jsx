@@ -1,18 +1,73 @@
 // src/pages/organizer/Dashboard.jsx
 import { useEffect, useState } from "react";
 import { Link } from "react-router-dom";
-import api from "../../api/axios";
+import { organizerApi } from "../../api/organizer.api";
 
 export default function OrganizerDashboard() {
   const [events, setEvents] = useState([]);
+  const [stats, setStats] = useState({
+    totalEvents: 0,
+    publishedEvents: 0,
+    draftEvents: 0,
+    totalTicketsSold: 0,
+    totalRevenue: 0,
+  });
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    api.get("/events/my").then(res => {
-      setEvents(res.data.data);
-      setLoading(false);
-    }).catch(() => setLoading(false));
+    // eslint-disable-next-line react-hooks/immutability
+    loadDashboardData();
   }, []);
+
+  const loadDashboardData = async () => {
+    try {
+      // Get all events
+      const eventsRes = await organizerApi.getMyEvents();
+      const eventsData = eventsRes.data.data;
+      setEvents(eventsData);
+
+      // Calculate statistics from events
+      let totalTicketsSold = 0;
+      let totalRevenue = 0;
+
+      // For each event, get tickets and calculate stats
+      for (const event of eventsData) {
+        try {
+          // Get tickets for this event
+          const ticketsRes = await organizerApi.getTicketsByEvent(event.id);
+          const tickets = ticketsRes.data.data;
+
+          // Each ticket has mappings to seat categories
+          // Count issued tickets across all ticket types
+          tickets.forEach(ticket => {
+            if (ticket.issuedTickets && ticket.issuedTickets.length > 0) {
+              const soldCount = ticket.issuedTickets.length;
+              totalTicketsSold += soldCount;
+              totalRevenue += soldCount * parseFloat(ticket.price || 0);
+            }
+          });
+        // eslint-disable-next-line no-unused-vars
+        } catch (err) {
+          // Event might not have tickets yet, skip
+          console.log(`No tickets for event ${event.id}`);
+        }
+      }
+
+      // Update stats
+      setStats({
+        totalEvents: eventsData.length,
+        publishedEvents: eventsData.filter(e => e.status === "PUBLISHED").length,
+        draftEvents: eventsData.filter(e => e.status === "DRAFT").length,
+        totalTicketsSold,
+        totalRevenue,
+      });
+
+      setLoading(false);
+    } catch (error) {
+      console.error("Failed to load dashboard data:", error);
+      setLoading(false);
+    }
+  };
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-950 text-white p-8">
@@ -30,7 +85,7 @@ export default function OrganizerDashboard() {
               Organizer Dashboard
             </h1>
             <p className="text-xl text-slate-400 font-medium max-w-2xl mx-auto">
-              {loading ? 'Loading your events...' : `${events.length} events ready to manage`}
+              {loading ? 'Loading your events...' : `${stats.totalEvents} events ready to manage`}
             </p>
           </div>
           <Link
@@ -57,35 +112,59 @@ export default function OrganizerDashboard() {
                   <p className="text-slate-500 text-sm font-medium uppercase tracking-wider">Your control center</p>
                 </div>
               </div>
+              {!loading && (
+                <button
+                  onClick={loadDashboardData}
+                  className="px-4 py-2 bg-slate-700/50 hover:bg-slate-600/50 rounded-lg text-sm font-medium transition-colors"
+                  title="Refresh stats"
+                >
+                  🔄 Refresh
+                </button>
+              )}
             </div>
           </div>
 
           {/* Scoreboard Stats Row */}
-          <div className="grid grid-cols-1 md:grid-cols-3 divide-x divide-slate-800/30">
+          <div className="grid grid-cols-1 md:grid-cols-4 divide-x divide-slate-800/30">
             
             {/* Total Events */}
-            <div className="p-8 text-center group hover:bg-emerald-500/5 transition-all duration-300 border-r md:border-r-slate-800/30">
+            <div className="p-8 text-center group hover:bg-emerald-500/5 transition-all duration-300">
               <div className="text-4xl font-black text-slate-100 mb-4 group-hover:text-emerald-400 transition-colors duration-300">
-                {loading ? '—' : events.length}
+                {loading ? '—' : stats.totalEvents}
               </div>
               <div className="space-y-1">
                 <p className="text-emerald-400 font-bold text-lg uppercase tracking-wider">Total Events</p>
-                <p className="text-slate-500 text-sm">Events you're managing</p>
+                <p className="text-slate-500 text-sm">All your events</p>
               </div>
             </div>
 
-            {/* Tickets */}
-            <div className="p-8 text-center group hover:bg-rose-500/5 transition-all duration-300 border-r md:border-r-slate-800/30">
-              <div className="text-4xl font-black text-slate-100 mb-4">0</div>
+            {/* Published Events */}
+            <div className="p-8 text-center group hover:bg-blue-500/5 transition-all duration-300">
+              <div className="text-4xl font-black text-slate-100 mb-4 group-hover:text-blue-400 transition-colors duration-300">
+                {loading ? '—' : stats.publishedEvents}
+              </div>
               <div className="space-y-1">
-                <p className="text-rose-400 font-bold text-lg uppercase tracking-wider">Total Tickets</p>
-                <p className="text-slate-500 text-sm">Sold across events</p>
+                <p className="text-blue-400 font-bold text-lg uppercase tracking-wider">Published</p>
+                <p className="text-slate-500 text-sm">Live events</p>
+              </div>
+            </div>
+
+            {/* Tickets Sold */}
+            <div className="p-8 text-center group hover:bg-rose-500/5 transition-all duration-300">
+              <div className="text-4xl font-black text-slate-100 mb-4 group-hover:text-rose-400 transition-colors duration-300">
+                {loading ? '—' : stats.totalTicketsSold}
+              </div>
+              <div className="space-y-1">
+                <p className="text-rose-400 font-bold text-lg uppercase tracking-wider">Tickets Sold</p>
+                <p className="text-slate-500 text-sm">Across all events</p>
               </div>
             </div>
 
             {/* Revenue */}
             <div className="p-8 text-center group hover:bg-purple-500/5 transition-all duration-300">
-              <div className="text-4xl font-black text-slate-100 mb-4">₹0</div>
+              <div className="text-4xl font-black text-slate-100 mb-4 group-hover:text-purple-400 transition-colors duration-300">
+                {loading ? '—' : `₹${stats.totalRevenue.toLocaleString('en-IN')}`}
+              </div>
               <div className="space-y-1">
                 <p className="text-purple-400 font-bold text-lg uppercase tracking-wider">Revenue</p>
                 <p className="text-slate-500 text-sm">Total earnings</p>
@@ -153,17 +232,21 @@ export default function OrganizerDashboard() {
                         </h4>
                         <p className="text-sm text-slate-500 flex items-center mt-1">
                           <span className="w-1.5 h-1.5 bg-slate-500 rounded-full mr-2"></span>
-                          ID: <span className="font-mono ml-1">{event.id}</span>
+                          {new Date(event.startDateTime).toLocaleDateString('en-IN', { 
+                            month: 'short', 
+                            day: 'numeric',
+                            year: 'numeric'
+                          })}
                         </p>
                         {event.status && (
                           <span className={`inline-flex px-3 py-1 rounded-full text-xs font-bold mt-2 ${
-                            event.status === 'active' 
+                            event.status === 'PUBLISHED' 
                               ? 'bg-emerald-500/20 text-emerald-400 border border-emerald-500/50' 
-                              : event.status === 'draft' 
+                              : event.status === 'DRAFT' 
                               ? 'bg-yellow-500/20 text-yellow-400 border border-yellow-500/50'
                               : 'bg-slate-700/50 text-slate-400 border border-slate-700/50'
                           }`}>
-                            {event.status.toUpperCase()}
+                            {event.status}
                           </span>
                         )}
                       </div>
