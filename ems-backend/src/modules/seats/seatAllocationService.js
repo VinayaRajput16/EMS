@@ -1,6 +1,6 @@
 import AppError from "../../common/errors/AppError.js";
 import { ticketTypeRepo } from "../ticket/ticketTypeRepo.js";
-import { seatCategoryRepo } from "../seatCategory/seatCategoryRepo.js";
+import { seatCategoryRepo } from "../SeatCategory/seatCategoryRepo.js";
 import { eventRepo } from "../event/eventRepo.js";
 import { seatRepo } from "../seats/seatRepo.js";
 import prisma from "../../config/db.js";
