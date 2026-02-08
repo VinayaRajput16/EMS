@@ -1,7 +1,7 @@
-// src/pages/Login.jsx - ELITE DARK THEME
+// src/pages/organizer/Login.jsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
-import api from "../../api/axios.js";
+import { authApi } from "../../api/auth.api";
 
 export default function Login() {
   const [email, setEmail] = useState("");
@@ -16,15 +16,15 @@ export default function Login() {
     setError("");
     
     try {
-      const res = await api.post("/auth/login", { email, password });
+      const response = await authApi.login({ email, password });
       
       // Store tokens
-      localStorage.setItem("accessToken", res.data.accessToken);
-      localStorage.setItem("refreshToken", res.data.refreshToken);
+      localStorage.setItem("accessToken", response.data.accessToken);
+      localStorage.setItem("refreshToken", response.data.refreshToken);
       
       // Get user role and id from response
-      const userRole = res.data.user.role;
-      const userId = res.data.user.id;
+      const userRole = response.data.user.role;
+      const userId = response.data.user.id;
       
       // Redirect based on role
       if (userRole === "ORGANIZER") {
@@ -32,12 +32,10 @@ export default function Login() {
       } else if (userRole === "USER") {
         navigate(`/user/${userId}/dashboard`);
       } else {
-        // Fallback for any other roles
         setError("Unknown user role. Please contact support.");
       }
-    // eslint-disable-next-line no-unused-vars
     } catch (err) {
-      setError("Invalid email or password. Please try again.");
+      setError(err.response?.data?.message || "Invalid email or password. Please try again.");
     } finally {
       setIsLoading(false);
     }

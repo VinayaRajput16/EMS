@@ -1,6 +1,7 @@
-// src/pages/Register.jsx - FULL CODE WITH FIXED WIDTH
+// src/pages/Register.jsx
 import { useState } from "react";
 import { useNavigate, Link } from "react-router-dom";
+import { authApi } from "../api/auth.api";
 
 export default function Register() {
   const navigate = useNavigate();
@@ -18,7 +19,7 @@ export default function Register() {
       ...formData,
       [e.target.name]: e.target.value
     });
-    setError(""); // Clear error when user types
+    setError("");
   };
 
   const handleSubmit = async (e) => {
@@ -27,24 +28,23 @@ export default function Register() {
     setLoading(true);
 
     try {
-      const response = await fetch("http://localhost:3000/auth/register", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json"
-        },
-        body: JSON.stringify(formData)
-      });
-
-      const data = await response.json();
-
-      if (!response.ok) {
-        throw new Error(data.message || "Registration failed");
+      const response = await authApi.register(formData);
+      
+      // Store tokens
+      localStorage.setItem("accessToken", response.data.accessToken);
+      localStorage.setItem("refreshToken", response.data.refreshToken);
+      
+      // Get user data
+      const user = response.data.user;
+      
+      // Redirect based on role
+      if (user.role === "ORGANIZER") {
+        navigate("/organizer/dashboard");
+      } else if (user.role === "USER") {
+        navigate(`/user/${user.id}/dashboard`);
       }
-
-      // Registration successful - redirect to login
-      navigate("/admin/login");
     } catch (err) {
-      setError(err.message || "Something went wrong");
+      setError(err.response?.data?.message || "Registration failed");
     } finally {
       setLoading(false);
     }
@@ -59,7 +59,7 @@ export default function Register() {
         <div className="absolute inset-0 bg-grid-slate/[0.08] bg-center [mask-image:radial-gradient(ellipse_80%_50%_at_50%_-20%,white,transparent)]"></div>
       </div>
 
-      {/* ✅ FIXED - Much Wider Main Card */}
+      {/* Main Card */}
       <div className="relative z-10 w-full max-w-2xl lg:max-w-3xl bg-white/5 backdrop-blur-3xl rounded-4xl border border-white/10 shadow-2xl p-10 lg:p-12">
         
         {/* Header */}
