@@ -13,6 +13,7 @@ export default function OrganizerEventView() {
   const [loading, setLoading] = useState(true);
   const [publishing, setPublishing] = useState(false);
   const [error, setError] = useState("");
+  const [deleting, setDeleting] = useState(false);
 
   useEffect(() => {
     organizerApi
@@ -41,6 +42,20 @@ export default function OrganizerEventView() {
       );
     } finally {
       setPublishing(false);
+    }
+  }
+  async function handleDeleteEvent() {
+    if (!confirm(`Are you sure you want to delete "${event.title}"? This action cannot be undone.`)) {
+      return;
+    }
+
+    setDeleting(true);
+    try {
+      await organizerApi.deleteEvent(eventId);
+      navigate("/organizer/events");
+    } catch (err) {
+      setError(err.response?.data?.message || "Failed to delete event");
+      setDeleting(false);
     }
   }
 
@@ -241,7 +256,53 @@ export default function OrganizerEventView() {
             </div>
           </div>
         )}
+        {/* Action Buttons */}
+        <div className="bg-white/5 backdrop-blur-xl rounded-4xl border border-slate-700/50 shadow-2xl p-8 flex flex-col sm:flex-row gap-4 justify-end">
+          {!isPublished && (
+            <button
+              onClick={publishEvent}
+              disabled={publishing}
+              className="group relative flex-1 sm:w-auto px-10 py-6 bg-gradient-to-r from-emerald-600 to-emerald-700 text-white font-black rounded-3xl hover:from-emerald-700 hover:to-emerald-800 transition-all duration-300 shadow-2xl hover:shadow-emerald-500/50 hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed text-lg overflow-hidden"
+            >
+              {/* ... existing publish button code ... */}
+            </button>
+          )}
 
+          {/* NEW: Delete Button (only for DRAFT events) */}
+          {!isPublished && (
+            <button
+              onClick={handleDeleteEvent}
+              disabled={deleting}
+              className="group relative px-10 py-6 bg-rose-600/20 hover:bg-rose-600/30 border border-rose-500/50 text-rose-300 font-bold rounded-3xl transition-all duration-300 hover:shadow-rose-500/50 hover:-translate-y-1 disabled:opacity-50 disabled:cursor-not-allowed flex-shrink-0 text-lg"
+            >
+              <span className="relative flex items-center justify-center">
+                {deleting ? (
+                  <>
+                    <svg className="w-5 h-5 mr-3 animate-spin" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Deleting...
+                  </>
+                ) : (
+                  <>
+                    <svg className="w-5 h-5 mr-3" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                      <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                    </svg>
+                    Delete Event
+                  </>
+                )}
+              </span>
+            </button>
+          )}
+
+          <button
+            onClick={() => navigate("/organizer/events")}
+            className="group relative px-10 py-6 bg-slate-800/50 backdrop-blur-sm border border-slate-700/50 text-slate-300 font-bold rounded-3xl hover:bg-slate-700/50 hover:border-slate-600/50 hover:text-slate-200 transition-all duration-300 hover:shadow-lg hover:shadow-slate-500/30 hover:-translate-y-1 flex-shrink-0 text-lg"
+          >
+            {/* ... existing back button code ... */}
+          </button>
+        </div>
         {/* Error Alert */}
         {error && (
           <div className="bg-rose-500/10 border border-rose-500/30 rounded-3xl p-8 backdrop-blur-sm">

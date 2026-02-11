@@ -10,30 +10,39 @@ export default function SeatCategoryList() {
   const [categories, setCategories] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
+  const [deletingId, setDeletingId] = useState(null);
 
   useEffect(() => {
-    let mounted = true;
+    loadCategories();
+  }, [eventId]);
 
-    async function loadCategories() {
-      try {
-        const res = await organizerApi.getSeatCategoriesByEvent(eventId);
-        if (mounted) {
-          setCategories(res.data.data);
-        }
-      } catch {
-        if (mounted) {
-          setError("Failed to load seat categories");
-        }
-      } finally {
-        if (mounted) setLoading(false);
-      }
+  async function loadCategories() {
+    try {
+      const res = await organizerApi.getSeatCategoriesByEvent(eventId);
+      setCategories(res.data.data);
+    } catch {
+      setError("Failed to load seat categories");
+    } finally {
+      setLoading(false);
+    }
+  }
+
+  async function handleDelete(categoryId, categoryName) {
+    if (!confirm(`Are you sure you want to delete "${categoryName}"? This will delete all associated seats.`)) {
+      return;
     }
 
-    loadCategories();
-    return () => {
-      mounted = false;
-    };
-  }, [eventId]);
+    setDeletingId(categoryId);
+    try {
+      await organizerApi.deleteSeatCategory(categoryId);
+      // Reload categories
+      await loadCategories();
+    } catch (err) {
+      alert(err.response?.data?.message || "Failed to delete seat category");
+    } finally {
+      setDeletingId(null);
+    }
+  }
 
   if (loading) {
     return (
@@ -129,7 +138,7 @@ export default function SeatCategoryList() {
                   </div>
                   <div className="group hover:text-emerald-400 transition-colors">
                     <div className="text-3xl font-black">{categories.reduce((sum, c) => sum + (c.maxSeats || 0), 0)}</div>
-                    <div className="text-sm text-slate-400 uppercase tracking-wider font-bold mt-1">Limited Seats</div>
+                    <div className="text-sm text-slate-400 uppercase tracking-wider font-bold mt-1">Total Seats</div>
                   </div>
                   <div className="group hover:text-rose-400 transition-colors">
                     <div className="text-3xl font-black">{categories.filter(c => !c.maxSeats).length}</div>
@@ -152,47 +161,74 @@ export default function SeatCategoryList() {
                       <th className="px-8 py-6 text-left text-slate-300 font-black uppercase tracking-wider text-xs">
                         Max Seats
                       </th>
-                      <th className="px-8 py-6 text-right text-slate-300 font-black uppercase tracking-wider text-xs">
+                      <th className="px-8 py-6 text-left text-slate-300 font-black uppercase tracking-wider text-xs">
                         Status
+                      </th>
+                      <th className="px-8 py-6 text-right text-slate-300 font-black uppercase tracking-wider text-xs">
+                        Actions
                       </th>
                     </tr>
                   </thead>
                   <tbody className="divide-y divide-slate-800/50">
                     {categories.sort((a, b) => a.priority - b.priority).map((category) => (
-                      <tr key={category.id} className="group hover:bg-slate-800/30 transition-all duration-200 hover:shadow-slate-500/20">
+                      <tr key={category.id} className="group hover:bg-slate-800/30 transition-all duration-200">
                         <td className="px-8 py-6">
                           <div className="flex items-center space-x-4">
                             <div className="w-12 h-12 bg-gradient-to-br from-purple-500/20 to-purple-600/20 rounded-2xl border-2 border-purple-500/30 flex items-center justify-center flex-shrink-0 group-hover:bg-purple-500/40 group-hover:border-purple-500/60">
-                              <svg className="w-6 h-6 text-purple-400 group-hover:text-purple-300" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                              <svg className="w-6 h-6 text-purple-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
                                 <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />
                               </svg>
                             </div>
                             <div>
-                              <div className="font-black text-slate-100 text-lg group-hover:text-purple-400 transition-colors">{category.name}</div>
-                              <div className="text-sm text-slate-500 font-mono">ID: {category.id}</div>
+                              <div className="font-black text-slate-100 text-lg">{category.name}</div>
+                              <div className="text-sm text-slate-500 font-mono">ID: {category.id.slice(0, 8)}...</div>
                             </div>
                           </div>
                         </td>
                         <td className="px-8 py-6">
-                          <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 rounded-2xl border border-emerald-500/40 text-emerald-400 font-bold text-sm shadow-emerald-500/20">
+                          <span className="inline-flex items-center px-4 py-2 bg-emerald-500/20 rounded-2xl border border-emerald-500/40 text-emerald-400 font-bold text-sm">
                             #{category.priority}
-                          </div>
+                          </span>
                         </td>
                         <td className="px-8 py-6">
                           {category.maxSeats ? (
-                            <div className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-slate-500/20 to-slate-600/20 rounded-2xl border border-slate-500/40 text-slate-300 font-bold text-sm shadow-slate-500/20">
+                            <span className="inline-flex items-center px-4 py-2 bg-slate-500/20 rounded-2xl border border-slate-500/40 text-slate-300 font-bold text-sm">
                               {category.maxSeats.toLocaleString()}
-                            </div>
+                            </span>
                           ) : (
-                            <span className="inline-flex items-center px-4 py-2 bg-gradient-to-r from-rose-500/20 to-rose-600/20 rounded-2xl border border-rose-500/40 text-rose-400 font-bold text-sm shadow-rose-500/20">
+                            <span className="inline-flex items-center px-4 py-2 bg-rose-500/20 rounded-2xl border border-rose-500/40 text-rose-400 font-bold text-sm">
                               Unlimited
                             </span>
                           )}
                         </td>
-                        <td className="px-8 py-6 text-right">
-                          <span className="inline-flex px-4 py-2 bg-gradient-to-r from-emerald-500/20 to-emerald-600/20 rounded-2xl border border-emerald-500/40 text-emerald-400 font-bold text-sm shadow-emerald-500/20">
+                        <td className="px-8 py-6">
+                          <span className="inline-flex px-4 py-2 bg-emerald-500/20 rounded-2xl border border-emerald-500/40 text-emerald-400 font-bold text-sm">
                             Active
                           </span>
+                        </td>
+                        <td className="px-8 py-6 text-right">
+                          <button
+                            onClick={() => handleDelete(category.id, category.name)}
+                            disabled={deletingId === category.id}
+                            className="inline-flex items-center px-4 py-2 bg-rose-500/20 hover:bg-rose-500/30 rounded-2xl border border-rose-500/40 text-rose-400 font-bold text-sm transition-all hover:shadow-rose-500/50 disabled:opacity-50 disabled:cursor-not-allowed"
+                          >
+                            {deletingId === category.id ? (
+                              <>
+                                <svg className="w-4 h-4 mr-2 animate-spin" fill="none" viewBox="0 0 24 24">
+                                  <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                                  <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                                </svg>
+                                Deleting...
+                              </>
+                            ) : (
+                              <>
+                                <svg className="w-4 h-4 mr-2" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                                  <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />
+                                </svg>
+                                Delete
+                              </>
+                            )}
+                          </button>
                         </td>
                       </tr>
                     ))}

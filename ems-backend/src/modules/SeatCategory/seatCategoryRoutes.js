@@ -5,6 +5,7 @@ import { requireRole } from "../../common/middleware/roleMiddleware.js";
 
 const router = Router();
 
+// Create seat category for an event
 router.post(
   "/events/:eventId/seat-categories",
   authMiddleware,
@@ -12,11 +13,28 @@ router.post(
   seatCategoryController.create
 );
 
+// Get all seat categories for an event
 router.get(
   "/events/:eventId/seat-categories",
   authMiddleware,
   requireRole("ORGANIZER"),
   seatCategoryController.list
+);
+
+// Update a seat category
+router.patch(
+  "/seat-categories/:categoryId",
+  authMiddleware,
+  requireRole("ORGANIZER"),
+  seatCategoryController.update
+);
+
+// Delete a seat category
+router.delete(
+  "/seat-categories/:categoryId",
+  authMiddleware,
+  requireRole("ORGANIZER"),
+  seatCategoryController.delete
 );
 
 export default router;

@@ -3,8 +3,10 @@ import healthRoutes from './healthRoutes.js';
 import userRoutes from '../modules/users/userRoutes.js';
 import { authMiddleware } from '../common/middleware/authMiddleware.js';
 export const registerRoutes = (app) => {
+  // public routes
   app.use('/auth', authRoutes);
   app.use('/health', healthRoutes);
-   app.use(authMiddleware);
-  app.use('/users', userRoutes);
+
+  // protected routes
+  app.use('/users', authMiddleware, userRoutes);
 };

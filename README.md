@@ -227,7 +227,7 @@ ems-frontend/
 │   ├── api/
 │   │   ├── organizer.api.js   # Organizer API calls
 │   │   └── admin.api.js       # Admin API calls
-│   │
+│   │   |__ user.api.js        # User API calls 
 │   ├── pages/
 │   │   ├── organizer/
 │   │   │   ├── Events/        # Event management UI

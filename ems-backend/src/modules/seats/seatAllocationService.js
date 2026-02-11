@@ -55,7 +55,7 @@ async allocateSeatsForOrder({
     let allocated = false;
 
     for (const category of allowedCategories) {
-      // FIXED: Find an AVAILABLE seat instead of counting all seats
+      //Find an AVAILABLE seat instead of counting all seats
       const availableSeat = await tx.seat.findFirst({
         where: {
           venueId: event.venue.id,

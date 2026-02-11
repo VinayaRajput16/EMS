@@ -4,7 +4,6 @@ import { eventRepo } from "../event/eventRepo.js";
 import { venueRepo } from "../venue/venueRepo.js";
 import prisma from "../../config/db.js";
 
-
 export const seatCategoryService = {
   async create(eventId, payload, organizerId) {
     const { name, priority, maxSeats } = payload;
@@ -42,7 +41,7 @@ export const seatCategoryService = {
         seatsToCreate.push({
           venueId: venue.id,
           categoryId: category.id,
-          label: `${name.substring(0, 1).toUpperCase()}${i}`, // e.g., "B1", "G1"
+          label: `${name.substring(0, 1).toUpperCase()}${i}`,
           status: "AVAILABLE",
         });
       }
@@ -74,5 +73,100 @@ export const seatCategoryService = {
     }
 
     return seatCategoryRepo.findByVenue(event.venue.id);
+  },
+
+  // NEW: Update seat category
+  async update(categoryId, payload, organizerId) {
+    // Get category with venue and event to verify ownership
+    const category = await prisma.seatCategory.findUnique({
+      where: { id: categoryId },
+      include: {
+        venue: {
+          include: {
+            event: true,
+          },
+        },
+      },
+    });
+
+    if (!category) {
+      throw new AppError("Seat category not found", 404);
+    }
+
+    if (category.venue.event.organizerId !== organizerId) {
+      throw new AppError("Unauthorized", 403);
+    }
+
+    // Check if event is published
+    if (category.venue.event.status === "PUBLISHED") {
+      throw new AppError("Cannot modify seat categories of published events", 400);
+    }
+
+    // Update only allowed fields
+    const { name, priority, maxSeats } = payload;
+    const updateData = {};
+
+    if (name !== undefined) updateData.name = name;
+    if (priority !== undefined) updateData.priority = priority;
+    if (maxSeats !== undefined) updateData.maxSeats = maxSeats;
+
+    return prisma.seatCategory.update({
+      where: { id: categoryId },
+      data: updateData,
+    });
+  },
+
+  // NEW: Delete seat category
+  async delete(categoryId, organizerId) {
+    // Get category with venue and event to verify ownership
+    const category = await prisma.seatCategory.findUnique({
+      where: { id: categoryId },
+      include: {
+        venue: {
+          include: {
+            event: true,
+          },
+        },
+        seats: true,
+        ticketTypeCategories: true, // FIXED: Correct field name from schema
+      },
+    });
+
+    if (!category) {
+      throw new AppError("Seat category not found", 404);
+    }
+
+    if (category.venue.event.organizerId !== organizerId) {
+      throw new AppError("Unauthorized", 403);
+    }
+
+    // Check if event is published
+    if (category.venue.event.status === "PUBLISHED") {
+      throw new AppError("Cannot delete seat categories from published events", 400);
+    }
+
+    // Check if any seats are allocated
+    const allocatedSeats = category.seats.filter(s => s.status === "ALLOCATED");
+    if (allocatedSeats.length > 0) {
+      throw new AppError("Cannot delete category with allocated seats", 400);
+    }
+
+    // Check if any ticket types are mapped to this category
+    if (category.ticketTypeCategories.length > 0) {
+      throw new AppError("Cannot delete category with ticket type mappings. Delete the ticket types first.", 400);
+    }
+
+    // Delete in transaction: seats first, then category
+    return prisma.$transaction(async (tx) => {
+      // Delete all seats
+      await tx.seat.deleteMany({
+        where: { categoryId },
+      });
+
+      // Delete category
+      await tx.seatCategory.delete({
+        where: { id: categoryId },
+      });
+    });
   },
 };

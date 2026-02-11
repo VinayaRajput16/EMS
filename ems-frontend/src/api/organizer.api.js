@@ -37,7 +37,7 @@ export const organizerApi = {
     api.patch(`/api/events/${eventId}/venue`, data),
 
 
-  // ===================== SEAT CATEGORIES =====================
+   // ===================== SEAT CATEGORIES =====================
   createSeatCategoryForEvent: (eventId, data) =>
     api.post(`/api/events/${eventId}/seat-categories`, data),
 
