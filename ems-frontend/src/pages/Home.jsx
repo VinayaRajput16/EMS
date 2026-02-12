@@ -40,18 +40,6 @@ export default function Home() {
 
             {/* Primary CTA - UPDATED WITH REGISTER BUTTON */}
             <div className="flex flex-col lg:flex-row gap-6 justify-center items-center mb-20">
-              <Link
-                to="/events"
-                className="group relative px-12 py-7 bg-gradient-to-r from-emerald-600 to-emerald-700 text-xl font-bold text-white rounded-3xl shadow-2xl hover:shadow-emerald-500/25 hover:-translate-y-1 transition-all duration-500 overflow-hidden focus:outline-none focus:ring-4 focus:ring-emerald-400/50 focus:ring-offset-2 focus:ring-offset-slate-950"
-              >
-                <span className="absolute inset-0 bg-gradient-to-r from-emerald-400/30 to-transparent -skew-x-12 -translate-x-full group-hover:translate-x-full transition-transform duration-700 ease-out"></span>
-                <span className="relative flex items-center">
-                  <svg className="w-7 h-7 mr-3 opacity-95" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M13 10V3L4 14h7v7l9-11h-7z" />
-                  </svg>
-                  Explore Events
-                </span>
-              </Link>
               
               {/* ✅ NEW REGISTER BUTTON */}
               <Link
