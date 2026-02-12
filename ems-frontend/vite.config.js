@@ -12,7 +12,7 @@ export default defineConfig({
       allow: ['..']
     }
   },
-  // ✅ FIX JSX PARSING
+
   esbuild: {
     loader: 'jsx',
     include: /src\/.*\.jsx?$/,
