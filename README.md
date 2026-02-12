@@ -281,7 +281,7 @@ npx prisma generate
 npm run dev
 ```
 
-The backend will run on `http://localhost:5000` (or your configured port)
+The backend will run on `http://localhost:3000` (or your configured port)
 
 ### Frontend Setup
 
