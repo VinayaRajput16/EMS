@@ -39,4 +39,17 @@ export const orderController = {
       next(e);
     }
   },
+
+  // NEW: Get all bookings for an event (organizer only)
+  async getEventBookings(req, res, next) {
+    try {
+      const bookings = await orderService.getEventBookings(
+        req.params.eventId,
+        req.user.id
+      );
+      res.json({ success: true, data: bookings });
+    } catch (e) {
+      next(e);
+    }
+  },
 };

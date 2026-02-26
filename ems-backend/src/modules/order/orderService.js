@@ -9,8 +9,6 @@ export const orderService = {
   /**
    * Book tickets for an event
    */
-  // REPLACE YOUR orderService.book() function with this updated version
-
   async book(payload, userId) {
     const { eventId, ticketTypeId, quantity, seatIds = [] } = payload;
 
@@ -185,5 +183,19 @@ export const orderService = {
         data: { status: "CANCELLED" },
       });
     });
+  },
+
+ 
+  async getEventBookings(eventId, organizerId) {
+    // Verify event ownership
+    const event = await eventRepo.findById(eventId);
+    if (!event) throw new AppError("Event not found", 404);
+    
+    if (event.organizerId !== organizerId) {
+      throw new AppError("Unauthorized", 403);
+    }
+    
+    // Get all orders for this event with issued tickets
+    return orderRepo.findByEventId(eventId);
   },
 };

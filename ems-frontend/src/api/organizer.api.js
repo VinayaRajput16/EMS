@@ -66,5 +66,8 @@ export const organizerApi = {
   // ===================== SEAT MANAGEMENT =====================
   getEventSeats: (eventId) =>
     api.get(`/api/events/${eventId}/seats`),
+  // ===================== BOOKINGS/ORDERS =====================
+  getEventBookings: (eventId) =>
+    api.get(`/api/events/${eventId}/bookings`),
 };
 

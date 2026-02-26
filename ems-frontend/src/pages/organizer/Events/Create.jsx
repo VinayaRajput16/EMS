@@ -11,6 +11,7 @@ export default function OrganizerEventCreate() {
   const [startDateTime, setStartDateTime] = useState("");
   const [endDateTime, setEndDateTime] = useState("");
   const [allocationMode, setAllocationMode] = useState("MANUAL");
+  const [allocationModeOpen, setAllocationModeOpen] = useState(false);
 
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState("");
@@ -31,7 +32,7 @@ export default function OrganizerEventCreate() {
 
       const eventId = res.data.data.id;
       navigate(`/organizer/events/${eventId}/venue/create`);
-    // eslint-disable-next-line no-unused-vars
+      // eslint-disable-next-line no-unused-vars
     } catch (err) {
       setError("Failed to create event. Please try again.");
     } finally {
@@ -42,7 +43,7 @@ export default function OrganizerEventCreate() {
   return (
     <div className="min-h-screen bg-gradient-to-br from-slate-900 via-gray-900 to-slate-950 text-white p-8">
       <div className="max-w-2xl mx-auto">
-        
+
         {/* Header */}
         <div className="text-center mb-12">
           <div className="w-20 h-20 bg-gradient-to-br from-emerald-500 to-emerald-600 rounded-3xl flex items-center justify-center mx-auto mb-6 shadow-2xl">
@@ -58,7 +59,7 @@ export default function OrganizerEventCreate() {
 
         {/* Main Form Card */}
         <div className="bg-white/5 backdrop-blur-xl rounded-4xl border border-slate-700/50 shadow-2xl overflow-hidden">
-          
+
           {/* Error Alert */}
           {error && (
             <div className="bg-rose-500/10 border-rose-500/30 border-t border-b p-6 backdrop-blur-sm">
@@ -73,7 +74,7 @@ export default function OrganizerEventCreate() {
 
           {/* Form */}
           <form onSubmit={submit} className="p-8 space-y-8">
-            
+
             {/* Title Field */}
             <div className="space-y-3">
               <label className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center">
@@ -113,7 +114,7 @@ export default function OrganizerEventCreate() {
 
             {/* Date Time Fields */}
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-              
+
               {/* Start Date */}
               <div className="space-y-3">
                 <label className="text-sm font-bold text-slate-300 uppercase tracking-wider flex items-center">
@@ -160,17 +161,56 @@ export default function OrganizerEventCreate() {
                 </svg>
                 Seating Allocation Mode
               </label>
-              <select
-                className="w-full px-5 py-4 bg-white/10 backdrop-blur-sm border border-slate-700/50 rounded-2xl text-slate-100 focus:ring-4 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all duration-300 text-lg font-medium focus:outline-none hover:border-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed appearance-none bg-no-repeat bg-right"
-                value={allocationMode}
-                onChange={(e) => setAllocationMode(e.target.value)}
-                disabled={loading}
-              >
-                <option value="MANUAL">Manual Allocation (Recommended)</option>
-                <option value="AUTOMATED">Automated Allocation</option>
-              </select>
-            </div>
 
+              <div className="relative">
+                {/* Trigger button */}
+                <button
+                  type="button"
+                  onClick={() => !loading && setAllocationModeOpen(!allocationModeOpen)}
+                  disabled={loading}
+                  className="w-full px-5 py-4 bg-white/10 backdrop-blur-sm border border-slate-700/50 rounded-2xl text-slate-100 focus:ring-4 focus:ring-emerald-500/30 focus:border-emerald-500/50 transition-all duration-300 text-lg font-medium focus:outline-none hover:border-slate-600/50 disabled:opacity-50 disabled:cursor-not-allowed flex items-center justify-between"
+                >
+                  <span>{allocationMode === 'MANUAL' ? 'Manual Allocation (Recommended)' : 'Automated Allocation'}</span>
+                  <svg
+                    className={`w-5 h-5 text-slate-400 transition-transform duration-200 ${allocationModeOpen ? 'rotate-180' : ''}`}
+                    fill="none" stroke="currentColor" viewBox="0 0 24 24"
+                  >
+                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M19 9l-7 7-7-7" />
+                  </svg>
+                </button>
+
+                {/* Dropdown panel */}
+                {allocationModeOpen && (
+                  <div className="absolute z-50 w-full mt-2 bg-slate-800/95 backdrop-blur-sm border border-slate-700/50 rounded-2xl overflow-hidden shadow-2xl shadow-black/40">
+                    {[
+                      { value: 'MANUAL', label: 'Manual Allocation (Recommended)' },
+                      { value: 'AUTOMATED', label: 'Automated Allocation' },
+                    ].map((option) => (
+                      <button
+                        key={option.value}
+                        type="button"
+                        onClick={() => {
+                          setAllocationMode(option.value);
+                          setAllocationModeOpen(false);
+                        }}
+                        className={`w-full px-5 py-4 text-left text-lg font-medium transition-all duration-150 flex items-center justify-between
+              ${allocationMode === option.value
+                            ? 'bg-emerald-500/20 text-emerald-300'
+                            : 'text-slate-200 hover:bg-white/10 hover:text-slate-100'
+                          }`}
+                      >
+                        <span>{option.label}</span>
+                        {allocationMode === option.value && (
+                          <svg className="w-5 h-5 text-emerald-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M5 13l4 4L19 7" />
+                          </svg>
+                        )}
+                      </button>
+                    ))}
+                  </div>
+                )}
+              </div>
+            </div>
             {/* Action Buttons */}
             <div className="flex flex-col sm:flex-row gap-4 pt-4">
               <button

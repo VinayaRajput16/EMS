@@ -7,7 +7,6 @@ import prisma from "../../config/db.js";
 
 
 export const seatAllocationService = {
-  // REPLACE your allocateSeatsForOrder function in seatAllocationService.js with this:
 
 async allocateSeatsForOrder({
   tx,

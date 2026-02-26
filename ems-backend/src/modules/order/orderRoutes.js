@@ -37,4 +37,12 @@ orderRouter.patch(
   orderController.cancel
 );
 
+// Get all bookings for an event (organizer only)
+orderRouter.get(
+  "/events/:eventId/bookings",
+  authMiddleware,
+  requireRole("ORGANIZER"),
+  orderController.getEventBookings
+);
+
 export default orderRouter;
